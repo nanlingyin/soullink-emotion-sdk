@@ -1,0 +1,41 @@
+{
+  "name": "@soullink-emotion/sdk",
+  "version": "0.1.0-beta.1",
+  "description": "Meta package that installs the complete Soullink Emotion SDK.",
+  "license": "MIT",
+  "keywords": [
+    "emotion",
+    "live2d",
+    "virtual-character",
+    "sdk",
+    "meta-package"
+  ],
+  "type": "module",
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "main": "./index.js",
+  "module": "./index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@soullink-emotion/api-client": "0.1.0-beta.1",
+    "@soullink-emotion/classifier-embedding": "0.1.0-beta.1",
+    "@soullink-emotion/devtools-vue": "0.1.0-beta.1",
+    "@soullink-emotion/engine": "0.1.0-beta.1",
+    "@soullink-emotion/live2d-pixi": "0.1.0-beta.1",
+    "@soullink-emotion/planner-openai": "0.1.0-beta.1",
+    "@soullink-emotion/profile-generator": "0.1.0-beta.1",
+    "@soullink-emotion/runtime-core": "0.1.0-beta.1"
+  }
+}

@@ -34,7 +34,11 @@ npm publish --workspace @soullink-emotion/live2d-pixi --access public --tag beta
 npm publish --workspace @soullink-emotion/api-client --access public --tag beta
 npm publish --workspace @soullink-emotion/profile-generator --access public --tag beta
 npm publish --workspace @soullink-emotion/devtools-vue --access public --tag beta
+npm publish --workspace @soullink-emotion/sdk --access public --tag beta
 ```
+
+Publish `@soullink-emotion/sdk` last because it depends on all eight focused
+packages at the same version.
 
 Publishing is intentionally not automated from a developer machine. Add
 registry provenance and a protected CI release workflow after the repository

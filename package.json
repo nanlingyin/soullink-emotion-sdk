@@ -21,7 +21,7 @@
     "packages:build": "node ./scripts/run-package-task.mjs build",
     "packages:typecheck": "node ./scripts/run-package-task.mjs typecheck",
     "packages:test": "node ./scripts/run-package-task.mjs test",
-    "packages:pack:check": "node ./scripts/run-package-task.mjs pack:check",
+    "packages:pack:check": "node ./scripts/run-package-task.mjs pack:check && npm pack --workspace @soullink-emotion/sdk --dry-run",
     "audit:production": "npm audit --omit=dev --registry=https://registry.npmjs.org",
     "typecheck": "npm run packages:typecheck",
     "test": "npm run packages:test",

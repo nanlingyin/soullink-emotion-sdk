@@ -11,6 +11,7 @@ optional OpenAI-compatible planning and embedding services.
 
 | Package | Purpose |
 | --- | --- |
+| `@soullink-emotion/sdk` | Meta package that installs the complete SDK |
 | `@soullink-emotion/engine` | Framework-neutral emotion and performance engine |
 | `@soullink-emotion/runtime-core` | Headless session, TTS, audio, and planner orchestration |
 | `@soullink-emotion/planner-openai` | OpenAI-compatible reaction and speaking-motion planning |
@@ -21,6 +22,12 @@ optional OpenAI-compatible planning and embedding services.
 | `@soullink-emotion/devtools-vue` | Vue 3 model calibration tools |
 
 The full integration guide is in [packages/README.md](./packages/README.md).
+
+To install the complete SDK in another project:
+
+```bash
+npm install @soullink-emotion/sdk
+```
 
 ## Development
 

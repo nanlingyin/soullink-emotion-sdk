@@ -141,6 +141,7 @@ VAD 用三个连续轴描述情绪，而不是只依赖一个标签：
 
 | 包 | 用途 | 运行环境 |
 | --- | --- | --- |
+| `@soullink-emotion/sdk` | 一次安装全部 Soullink Emotion 子包的 meta package | Browser / Node |
 | `@soullink-emotion/engine` | VAD、FACS/AU、Idle 动作、反应时序、口型、参数混合 | Browser / Node |
 | `@soullink-emotion/runtime-core` | 消息、Planner、TTS、Audio、Clock 和 engine 会话编排 | Browser / Node |
 | `@soullink-emotion/planner-openai` | OpenAI-compatible 反应、反思、主动消息和说话动作规划 | Browser / Node，推荐服务端 |
@@ -149,6 +150,14 @@ VAD 用三个连续轴描述情绪，而不是只依赖一个标签：
 | `@soullink-emotion/api-client` | Soullink HTTP API 客户端和 runtime adapters | Browser / Node |
 | `@soullink-emotion/live2d-pixi` | PIXI Live2D 渲染、CDI3 元数据和参数读取 | Browser |
 | `@soullink-emotion/devtools-vue` | Profile 覆盖率、参数预览、映射编辑和保存 | Browser / Vue 3 |
+
+如果希望一次安装全部子包：
+
+```bash
+npm install @soullink-emotion/sdk
+```
+
+安装后仍建议从具体的 `@soullink-emotion/*` 子包导入 API；这样 PIXI 和 Vue 等浏览器依赖不会在不需要时被加载。
 
 只需要本地表演参数：
 
