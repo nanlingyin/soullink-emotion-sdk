@@ -1,0 +1,51 @@
+{
+  "name": "@soullink-emotion/engine",
+  "version": "0.1.0-beta.1",
+  "description": "Framework-neutral VAD, FACS, motion, lip-sync, and Live2D parameter engine for real-time characters.",
+  "license": "MIT",
+  "keywords": [
+    "emotion",
+    "live2d",
+    "facs",
+    "vad",
+    "virtual-character"
+  ],
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./internal": {
+      "types": "./dist/internal.d.ts",
+      "import": "./dist/internal.js"
+    }
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "pack:check": "npm pack --dry-run"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

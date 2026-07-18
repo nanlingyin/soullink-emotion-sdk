@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#171522" />
+    <link rel="icon" href="data:," />
+    <title>Soullink Emotion · 模型测试台</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="stage-panel">
+        <header class="brand">
+          <div>
+            <span class="eyebrow">SOULLINK LIVE / MODEL LAB</span>
+            <h1><span id="model-name">Live2D</span> <em>实时测试台</em></h1>
+          </div>
+          <div class="brand-actions">
+            <select id="model-select" aria-label="选择 Live2D 模型" title="选择 Live2D 模型"></select>
+            <div id="status" class="status loading"><span></span>模型加载中</div>
+          </div>
+        </header>
+
+        <div id="stage" class="stage" aria-label="Live2D 模型画布">
+          <div class="stage-grid"></div>
+          <div class="stage-hint">拖动缩放与位置滑块调整构图</div>
+        </div>
+
+        <div class="telemetry">
+          <div><span>情绪</span><strong id="emotion">neutral</strong></div>
+          <div><span>Valence</span><strong id="valence">0.000</strong></div>
+          <div><span>Arousal</span><strong id="arousal">0.000</strong></div>
+          <div><span>Dominance</span><strong id="dominance">0.000</strong></div>
+          <div><span>参数帧</span><strong id="param-count">0</strong></div>
+          <div><span>FPS</span><strong id="fps">0</strong></div>
+        </div>
+      </section>
+
+      <aside class="control-panel">
+        <section>
+          <span class="section-index">01 / REACTION</span>
+          <h2>消息驱动</h2>
+          <div class="reaction-mode" role="group" aria-label="反应来源">
+            <button type="button" class="active" data-reaction-mode="local" aria-pressed="true">本地</button>
+            <button type="button" data-reaction-mode="embedding" aria-pressed="false">Embedding</button>
+            <button type="button" data-reaction-mode="llm" aria-pressed="false">LLM</button>
+          </div>
+          <div class="provider-status" aria-live="polite">
+            <span id="embedding-provider-status"><i></i>Embedding 检测中</span>
+            <span id="llm-provider-status"><i></i>LLM 检测中</span>
+          </div>
+          <form id="message-form">
+            <textarea id="message" rows="3" placeholder="例如：考试通过了，这是好消息！">考试通过了，这是好消息！</textarea>
+            <button id="reaction-submit" class="primary" type="submit"><span id="reaction-submit-label">触发本地反应</span><span>↗</span></button>
+          </form>
+          <div id="ai-result" class="ai-result" hidden>
+            <div><span id="ai-result-source">LOCAL</span><strong id="ai-result-emotion">neutral</strong></div>
+            <p id="ai-reply"></p>
+          </div>
+          <h3>全部情绪预设 <span id="emotion-count">0</span></h3>
+          <div class="emotion-grid" id="emotion-actions"></div>
+        </section>
+
+        <section>
+          <span class="section-index">02 / MULTI-FRAME MOTION</span>
+          <div class="section-title-row">
+            <h2>多帧动作规划</h2>
+            <button id="speaking-motion-stop" class="icon-button" type="button" title="停止多帧动作">■</button>
+          </div>
+          <div class="motion-mode" role="group" aria-label="多帧生成模式">
+            <button type="button" class="active" data-motion-mode="fixed-parallel" aria-pressed="true">固定帧</button>
+            <button type="button" data-motion-mode="duration" aria-pressed="false">按时长</button>
+          </div>
+          <label class="motion-text-label">动作文本
+            <textarea id="speaking-motion-text" rows="3">我终于完成了这个很难的项目！（先开心地抬头，再轻轻歪头看向你）</textarea>
+          </label>
+          <label id="speaking-frame-count-row">关键帧数 <output id="speaking-frame-count-value">4</output><input id="speaking-frame-count" type="range" min="2" max="12" step="1" value="4" /></label>
+          <label>帧间隔 <output id="speaking-frame-interval-value">0.75 s</output><input id="speaking-frame-interval" type="range" min="0.25" max="2" step="0.25" value="0.75" /></label>
+          <label id="speaking-duration-row" hidden>动作时长 <output id="speaking-duration-value">4.0 s</output><input id="speaking-duration" type="range" min="1" max="12" step="0.5" value="4" /></label>
+          <button id="speaking-motion-generate" class="primary" type="button"><span>生成并播放多帧动作</span><span>▶</span></button>
+          <div id="speaking-motion-result" class="motion-result" hidden aria-live="polite">
+            <div class="motion-result-summary">
+              <strong id="speaking-motion-provider">WAITING</strong>
+              <span id="speaking-motion-stats">0 帧</span>
+            </div>
+            <ol id="speaking-motion-timeline"></ol>
+          </div>
+        </section>
+
+        <section>
+          <span class="section-index">03 / VAD CONTROL</span>
+          <div class="section-title-row">
+            <h2>VAD 与情绪衰减</h2>
+            <button id="vad-reset" class="icon-button" type="button" title="恢复中性 VAD">↺</button>
+          </div>
+          <div class="axis-legend" aria-hidden="true"><span>−1</span><span>0</span><span>+1</span></div>
+          <label>Valence / 愉悦度 <output id="vad-valence-value">0.00</output><input id="vad-valence" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+          <label>Arousal / 唤醒度 <output id="vad-arousal-value">0.00</output><input id="vad-arousal" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+          <label>Dominance / 支配度 <output id="vad-dominance-value">0.00</output><input id="vad-dominance" type="range" min="-1" max="1" step="0.01" value="0" /></label>
+          <label class="decay-control">情绪衰减率 <output id="decay-value">0.018 /s</output><input id="decay" type="range" min="0.002" max="0.4" step="0.002" value="0.018" /></label>
+          <div class="vad-target-readout"><span>目标</span><strong id="vad-target">V +0.00 · A +0.00 · D +0.00</strong></div>
+        </section>
+
+        <section>
+          <span class="section-index">04 / FACS OVERRIDE</span>
+          <div class="section-title-row">
+            <h2>FACS 手动覆盖</h2>
+            <button id="facs-reset" class="icon-button" type="button" title="清空全部 FACS 手动覆盖">↺</button>
+          </div>
+          <div class="override-status"><span id="facs-mode-dot"></span><strong id="facs-override-count">自动 · 0/24</strong></div>
+          <div id="facs-controls" class="facs-controls"></div>
+        </section>
+
+        <section>
+          <span class="section-index">05 / MOTION STYLE</span>
+          <div class="section-title-row">
+            <h2>动作风格与幅度</h2>
+            <button id="motion-reset" class="icon-button" type="button" title="恢复默认动作设置">↺</button>
+          </div>
+          <div class="motion-style" role="group" aria-label="动作风格">
+            <button type="button" class="active" data-motion-style="natural" aria-pressed="true">自然</button>
+            <button type="button" data-motion-style="lively" aria-pressed="false">活泼</button>
+            <button type="button" data-motion-style="calm" aria-pressed="false">平静</button>
+            <button type="button" data-motion-style="shy" aria-pressed="false">害羞</button>
+          </div>
+          <label>自发动作 <output id="spontaneity-value">1.00×</output><input id="spontaneity" type="range" min="0" max="2" step="0.05" value="1" /></label>
+          <label>VAD 手势 <output id="gesture-frequency-value">1.00×</output><input id="gesture-frequency" type="range" min="0" max="2.5" step="0.05" value="1" /></label>
+          <label>注视稳定 <output id="gaze-stability-value">0.72</output><input id="gaze-stability" type="range" min="0" max="1" step="0.01" value="0.72" /></label>
+          <label>待机动作 <output id="idle-action-gain-value">1.00×</output><input id="idle-action-gain" type="range" min="0" max="2" step="0.05" value="1" /></label>
+          <label>表情与参数增益 <output id="parameter-gain-value">1.45×</output><input id="parameter-gain" type="range" min="0.4" max="5" step="0.05" value="1.45" /></label>
+          <label>头部与身体增益 <output id="body-gain-value">1.25×</output><input id="body-gain" type="range" min="0" max="4" step="0.05" value="1.25" /></label>
+          <div class="gain-scale" aria-hidden="true"><span>柔和</span><span>默认</span><span>夸张</span></div>
+        </section>
+
+        <section>
+          <span class="section-index">06 / NATIVE ANIMATION</span>
+          <h2>模型原生动画</h2>
+          <p id="native-animation-summary">正在读取模型动画目录</p>
+          <div class="expression-grid" id="native-animation-actions"></div>
+        </section>
+
+        <section>
+          <span class="section-index">07 / VIEW</span>
+          <h2>画面调整</h2>
+          <label>缩放 <output id="scale-value">1.00×</output><input id="scale" type="range" min="0.45" max="2.2" step="0.01" value="1" /></label>
+          <label>水平 <output id="x-value">0px</output><input id="offset-x" type="range" min="-500" max="500" step="1" value="0" /></label>
+          <label>垂直 <output id="y-value">0px</output><input id="offset-y" type="range" min="-500" max="500" step="1" value="0" /></label>
+        </section>
+
+        <details>
+          <summary>实时参数详情</summary>
+          <pre id="parameters">等待模型加载…</pre>
+        </details>
+      </aside>
+    </main>
+    <script type="module" src="/src/browser-test.js"></script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "src",
+    // Resolve @soullink-emotion/* peer deps from their built dist (like an external
+    // consumer) rather than the repo source paths inherited from tsconfig.base.json.
+    "paths": {}
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/__tests__/**",
+    "**/*.test.ts"
+  ]
+}

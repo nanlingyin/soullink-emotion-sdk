@@ -1,0 +1,59 @@
+{
+  "name": "@soullink-emotion/live2d-pixi",
+  "version": "0.1.0-beta.1",
+  "description": "PIXI v7 renderer adapter and Cubism metadata utilities for Soullink Emotion Live2D characters.",
+  "license": "MIT",
+  "keywords": [
+    "emotion",
+    "live2d",
+    "pixi",
+    "cubism",
+    "virtual-character"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./metadata": {
+      "types": "./dist/metadata.d.ts",
+      "import": "./dist/metadata.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "pack:check": "npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "pixi.js": "^7.4.3",
+    "pixi-live2d-display": "0.5.0-beta",
+    "@soullink-emotion/engine": "0.1.0-beta.1"
+  },
+  "devDependencies": {
+    "@soullink-emotion/engine": "0.1.0-beta.1",
+    "pixi-live2d-display": "0.5.0-beta",
+    "pixi.js": "7.4.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

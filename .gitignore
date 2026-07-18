@@ -1,0 +1,29 @@
+# Credentials and local environment
+api
+.env
+.env.*
+!.env.example
+
+# Dependencies and generated output
+node_modules/
+dist/
+packages/*/dist/
+output/
+coverage/
+*.tgz
+
+# Local browser tooling and logs
+.playwright-cli/
+.agents/
+.codex/
+*.log
+
+# Locally licensed model assets and archives
+l2d/
+*.zip
+
+# Editor and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

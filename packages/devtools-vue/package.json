@@ -1,0 +1,59 @@
+{
+  "name": "@soullink-emotion/devtools-vue",
+  "version": "0.1.0-beta.1",
+  "description": "Vue 3 calibration panel for Soullink Emotion model profiles and Live2D parameters.",
+  "license": "MIT",
+  "keywords": [
+    "emotion",
+    "vue",
+    "live2d",
+    "calibration",
+    "devtools"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist",
+    "types",
+    "README.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vite build",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "pack:check": "npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "@soullink-emotion/engine": "0.1.0-beta.1",
+    "vue": "^3.5.0"
+  },
+  "devDependencies": {
+    "@soullink-emotion/engine": "0.1.0-beta.1",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.16",
+    "vitest": "^3.2.4",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.1.2"
+  }
+}

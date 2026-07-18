@@ -1,0 +1,56 @@
+{
+  "name": "@soullink-emotion/profile-generator",
+  "version": "0.1.0-beta.1",
+  "description": "Node.js Live2D CDI3 profile generation, validation, calibration, and native-animation discovery for Soullink Emotion.",
+  "license": "MIT",
+  "keywords": [
+    "emotion",
+    "live2d",
+    "cubism",
+    "profile-generator",
+    "calibration"
+  ],
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/index.js",
+      "import": "./dist/index.js"
+    }
+  },
+  "browser": false,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "pack:check": "npm pack --dry-run"
+  },
+  "peerDependencies": {
+    "@soullink-emotion/engine": "0.1.0-beta.1",
+    "@soullink-emotion/planner-openai": "0.1.0-beta.1"
+  },
+  "devDependencies": {
+    "@soullink-emotion/engine": "0.1.0-beta.1",
+    "@soullink-emotion/planner-openai": "0.1.0-beta.1",
+    "@types/node": "^22.15.30",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
