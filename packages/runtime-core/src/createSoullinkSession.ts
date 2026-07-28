@@ -79,6 +79,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
   // ---- loop / lifecycle bookkeeping ----
   let started = false;
   let currentTime = clock.now?.() ?? 0;
+  let reactionRequestId = 0;
 
   // reflection scheduling
   let pendingReflectionTopic = "";
@@ -146,10 +147,17 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
   }
 
   function stop(): void {
-    if (!started) return;
-    started = false;
-    clock.stop();
+    reactionRequestId += 1;
+    planning = false;
+    if (started) {
+      started = false;
+      clock.stop();
+    }
     stopVoice();
+    if (voiceStatus === "loading" || voiceStatus === "playing") {
+      voiceStatus = "idle";
+    }
+    emit();
   }
 
   // ------------------------------------------------------------- send message
@@ -159,9 +167,15 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
     sendOptions: { awaitReply?: boolean } = {}
   ): Promise<EmotionIntent | null> {
     if (!message.trim()) return null;
+    const requestId = ++reactionRequestId;
     const currentVAD = runtimeSnapshot?.vad.current;
     const userTurn = { role: "user" as const, content: message };
 
+    stopVoice();
+    if (voiceStatus === "loading" || voiceStatus === "playing") {
+      voiceStatus = "idle";
+    }
+    conversation = [...conversation, userTurn];
     planning = true;
     apiError = null;
     emit();
@@ -172,20 +186,27 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
       if (!classifier) throw new Error("no-classifier");
       const result = await classifier.classify(message);
       immediateIntent = result.intent;
+      if (requestId !== reactionRequestId) return immediateIntent;
       runtime.triggerIntent(immediateIntent, now());
-      conversation = [...conversation, userTurn];
     } catch {
+      if (requestId !== reactionRequestId) return immediateIntent;
       // Fallback to the engine's local classifier.
       immediateIntent = runtime.sendMessage(message, now());
-      conversation = [...conversation, userTurn];
     }
     emit();
 
     // Background: LLM reply -> TTS -> playback -> speech motion. `awaitReply`
     // (serial danmaku queue) waits the whole chain; the default (manual chat)
     // returns immediately so a newer message can preempt older speech.
-    const replyTask = runReactionReply(message, immediateIntent, currentVAD)
+    const replyTask = runReactionReply(
+      requestId,
+      message,
+      immediateIntent,
+      currentVAD,
+      [...conversation]
+    )
       .finally(() => {
+        if (requestId !== reactionRequestId) return;
         planning = false;
         emit();
       });
@@ -198,10 +219,13 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
   }
 
   async function runReactionReply(
+    requestId: number,
     message: string,
     immediateIntent: EmotionIntent | null,
-    currentVAD: VADVector | undefined
+    currentVAD: VADVector | undefined,
+    reactionConversation: { role: "user" | "assistant"; content: string }[]
   ): Promise<void> {
+    if (requestId !== reactionRequestId) return;
     if (!planner?.planReaction) {
       armIdleReflection(message);
       return;
@@ -210,11 +234,12 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
     try {
       const plan = await planner.planReaction({
         message,
-        conversation,
+        conversation: reactionConversation,
         characterName: persona.name,
         characterProfile: persona.profile,
         vad: currentVAD
       });
+      if (requestId !== reactionRequestId) return;
 
       if (plan.replyDraft) {
         conversation = [...conversation, { role: "assistant", content: plan.replyDraft }];
@@ -234,8 +259,10 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
           userMessage: message
         });
       }
+      if (requestId !== reactionRequestId) return;
       armIdleReflection(message);
     } catch (cause) {
+      if (requestId !== reactionRequestId) return;
       apiError = `API fallback: ${describeError(cause)}`;
       const fallbackReply = createFallbackReply(immediateIntent?.emotion ?? "neutral");
       conversation = [...conversation, { role: "assistant", content: fallbackReply }];
@@ -733,6 +760,8 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
   // ----------------------------------------------------------------- lifecycle
 
   function reset(): void {
+    reactionRequestId += 1;
+    planning = false;
     runtime.reset(now());
     lastReply = "";
     conversation = [];
