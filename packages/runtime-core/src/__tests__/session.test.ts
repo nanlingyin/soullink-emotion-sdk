@@ -55,6 +55,21 @@ function deferred<T>() {
   return { promise, resolve: resolvePromise, reject: rejectPromise };
 }
 
+function createReactionPlan(replyDraft: string): SoullinkExternalPlan {
+  return {
+    intent: {
+      emotion: "happy",
+      variant: "soft_smile",
+      naturalEmotion: "happy",
+      intensity: 0.72,
+      contextTags: []
+    },
+    replyDraft,
+    vadTarget: { valence: 0.4, arousal: 0.3, dominance: 0.2 },
+    provider: "openai-compatible"
+  };
+}
+
 function makeStubs() {
   const calls = { reaction: 0, speakingMotion: 0, tts: 0, play: 0 };
 
@@ -233,6 +248,202 @@ describe("createSoullinkSession", () => {
     expect(classifyCalls).toBe(1);
     expect(intent?.emotion).toBe("curious");
   });
+
+  it("keeps user turns ordered and ignores a stale classifier result", async () => {
+    const firstClassification = deferred<Awaited<ReturnType<MessageClassifier["classify"]>>>();
+    const secondClassification = deferred<Awaited<ReturnType<MessageClassifier["classify"]>>>();
+    const reactionInputs: string[] = [];
+    const reactionConversations: string[][] = [];
+
+    const classifier: MessageClassifier = {
+      classify(message) {
+        return message === "first" ? firstClassification.promise : secondClassification.promise;
+      }
+    };
+    const planner: PlannerClient = {
+      async planReaction(input) {
+        reactionInputs.push(input.message);
+        reactionConversations.push(input.conversation.map((turn) => turn.content));
+        return createReactionPlan(`${input.message}-reply`);
+      }
+    };
+    const session = createSoullinkSession({
+      profile: createTestProfile(),
+      persona: amanePersona,
+      classifier,
+      planner,
+      clock: createManualClock(0)
+    });
+
+    session.start();
+    const first = session.sendMessage("first", { awaitReply: true });
+    const second = session.sendMessage("second", { awaitReply: true });
+
+    expect(session.getSnapshot().conversation).toEqual([
+      { role: "user", content: "first" },
+      { role: "user", content: "second" }
+    ]);
+
+    secondClassification.resolve({
+      intent: {
+        emotion: "curious",
+        variant: "tilt",
+        intensity: 0.6,
+        contextTags: []
+      }
+    });
+    await second;
+
+    firstClassification.resolve({
+      intent: {
+        emotion: "sad",
+        variant: "downcast",
+        intensity: 0.6,
+        contextTags: []
+      }
+    });
+    await first;
+
+    expect(reactionInputs).toEqual(["second"]);
+    expect(reactionConversations).toEqual([["first", "second"]]);
+    expect(session.getSnapshot().conversation).toEqual([
+      { role: "user", content: "first" },
+      { role: "user", content: "second" },
+      { role: "assistant", content: "second-reply" }
+    ]);
+    expect(session.getSnapshot().planning).toBe(false);
+    session.stop();
+  });
+
+  it("does not let a stale planner overwrite the latest reply or planning state", async () => {
+    const firstPlan = deferred<SoullinkExternalPlan>();
+    const secondPlan = deferred<SoullinkExternalPlan>();
+    const planner: PlannerClient = {
+      planReaction(input) {
+        return input.message === "first" ? firstPlan.promise : secondPlan.promise;
+      }
+    };
+    const session = createSoullinkSession({
+      profile: createTestProfile(),
+      persona: amanePersona,
+      planner,
+      clock: createManualClock(0)
+    });
+
+    session.start();
+    const first = session.sendMessage("first", { awaitReply: true });
+    const second = session.sendMessage("second", { awaitReply: true });
+
+    secondPlan.resolve(createReactionPlan("second-reply"));
+    await second;
+    expect(session.getSnapshot().lastReply).toBe("second-reply");
+    expect(session.getSnapshot().planning).toBe(false);
+
+    firstPlan.reject(new Error("stale failure"));
+    await first;
+
+    expect(session.getSnapshot().lastReply).toBe("second-reply");
+    expect(session.getSnapshot().apiError).toBeNull();
+    expect(session.getSnapshot().conversation).toEqual([
+      { role: "user", content: "first" },
+      { role: "user", content: "second" },
+      { role: "assistant", content: "second-reply" }
+    ]);
+    expect(session.getSnapshot().planning).toBe(false);
+    session.stop();
+  });
+
+  it.each(["resolve", "reject"] as const)(
+    "invalidates a pending reflection when a new message starts (%s)",
+    async (outcome) => {
+      const secondPlan = deferred<SoullinkExternalPlan>();
+      const oldReflection = deferred<{
+        thought: string;
+        reason: string;
+        emotion?: string;
+        vadTarget?: { valence: number; arousal: number; dominance: number };
+      }>();
+      const clock = createManualClock(0);
+      let reflectionCalls = 0;
+      const planner: PlannerClient = {
+        planReaction(input) {
+          return input.message === "first"
+            ? Promise.resolve(createReactionPlan("first-reply"))
+            : secondPlan.promise;
+        },
+        planReflection() {
+          reflectionCalls += 1;
+          return oldReflection.promise;
+        }
+      };
+      const session = createSoullinkSession({
+        profile: createTestProfile(),
+        persona: amanePersona,
+        planner,
+        clock,
+        reflectionIdleDelaySeconds: 0
+      });
+
+      session.start();
+      await session.sendMessage("first", { awaitReply: true });
+      for (let step = 1; step <= 100 && reflectionCalls === 0; step += 1) {
+        clock.tick(step * 0.1, 0.1);
+      }
+      expect(reflectionCalls).toBe(1);
+
+      const second = session.sendMessage("second", { awaitReply: true });
+      if (outcome === "resolve") {
+        oldReflection.resolve({
+          thought: "stale-thought",
+          reason: "old turn",
+          emotion: "sad",
+          vadTarget: { valence: -0.8, arousal: 0.2, dominance: -0.4 }
+        });
+      } else {
+        oldReflection.reject(new Error("stale reflection failure"));
+      }
+      await Promise.resolve();
+      await Promise.resolve();
+      const staleThought = session.getRuntime().getSnapshot().reflection?.thought;
+      const staleError = session.getSnapshot().apiError;
+
+      secondPlan.resolve(createReactionPlan("second-reply"));
+      await second;
+      session.stop();
+
+      expect(staleThought).not.toBe("stale-thought");
+      expect(staleError).toBeNull();
+    }
+  );
+
+  it.each(["stop", "reset"] as const)(
+    "%s invalidates a pending reaction without publishing its late result",
+    async (action) => {
+      const pendingPlan = deferred<SoullinkExternalPlan>();
+      const planner: PlannerClient = {
+        planReaction: () => pendingPlan.promise
+      };
+      const session = createSoullinkSession({
+        profile: createTestProfile(),
+        persona: amanePersona,
+        planner,
+        clock: createManualClock(0)
+      });
+
+      session.start();
+      const request = session.sendMessage("pending", { awaitReply: true });
+      expect(session.getSnapshot().planning).toBe(true);
+
+      session[action]();
+      pendingPlan.resolve(createReactionPlan("late-reply"));
+      await request;
+
+      expect(session.getSnapshot().planning).toBe(false);
+      expect(session.getSnapshot().lastReply).toBe("");
+      expect(session.getSnapshot().apiError).toBeNull();
+      expect(session.getSnapshot().conversation.some((turn) => turn.role === "assistant")).toBe(false);
+    }
+  );
 
   it("starts a fixed speaking-motion plan before TTS completes", async () => {
     const profile = createTestProfile();
