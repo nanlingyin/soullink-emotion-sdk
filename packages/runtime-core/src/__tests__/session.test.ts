@@ -353,6 +353,69 @@ describe("createSoullinkSession", () => {
     session.stop();
   });
 
+  it.each(["resolve", "reject"] as const)(
+    "invalidates a pending reflection when a new message starts (%s)",
+    async (outcome) => {
+      const secondPlan = deferred<SoullinkExternalPlan>();
+      const oldReflection = deferred<{
+        thought: string;
+        reason: string;
+        emotion?: string;
+        vadTarget?: { valence: number; arousal: number; dominance: number };
+      }>();
+      const clock = createManualClock(0);
+      let reflectionCalls = 0;
+      const planner: PlannerClient = {
+        planReaction(input) {
+          return input.message === "first"
+            ? Promise.resolve(createReactionPlan("first-reply"))
+            : secondPlan.promise;
+        },
+        planReflection() {
+          reflectionCalls += 1;
+          return oldReflection.promise;
+        }
+      };
+      const session = createSoullinkSession({
+        profile: createTestProfile(),
+        persona: amanePersona,
+        planner,
+        clock,
+        reflectionIdleDelaySeconds: 0
+      });
+
+      session.start();
+      await session.sendMessage("first", { awaitReply: true });
+      for (let step = 1; step <= 100 && reflectionCalls === 0; step += 1) {
+        clock.tick(step * 0.1, 0.1);
+      }
+      expect(reflectionCalls).toBe(1);
+
+      const second = session.sendMessage("second", { awaitReply: true });
+      if (outcome === "resolve") {
+        oldReflection.resolve({
+          thought: "stale-thought",
+          reason: "old turn",
+          emotion: "sad",
+          vadTarget: { valence: -0.8, arousal: 0.2, dominance: -0.4 }
+        });
+      } else {
+        oldReflection.reject(new Error("stale reflection failure"));
+      }
+      await Promise.resolve();
+      await Promise.resolve();
+      const staleThought = session.getRuntime().getSnapshot().reflection?.thought;
+      const staleError = session.getSnapshot().apiError;
+
+      secondPlan.resolve(createReactionPlan("second-reply"));
+      await second;
+      session.stop();
+
+      expect(staleThought).not.toBe("stale-thought");
+      expect(staleError).toBeNull();
+    }
+  );
+
   it.each(["stop", "reset"] as const)(
     "%s invalidates a pending reaction without publishing its late result",
     async (action) => {

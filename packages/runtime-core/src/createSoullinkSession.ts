@@ -168,6 +168,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
   ): Promise<EmotionIntent | null> {
     if (!message.trim()) return null;
     const requestId = ++reactionRequestId;
+    clearIdleReflectionTrigger();
     const currentVAD = runtimeSnapshot?.vad.current;
     const userTurn = { role: "user" as const, content: message };
 
@@ -494,6 +495,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
         now()
       );
     } catch (cause) {
+      if (requestId !== reflectionRequestId) return;
       apiError = `Reflection skipped: ${describeError(cause)}`;
       emit();
     }
