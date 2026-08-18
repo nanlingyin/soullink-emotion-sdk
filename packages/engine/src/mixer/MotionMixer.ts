@@ -8,6 +8,7 @@ export interface MotionMixerInput {
   emotion?: PartialFACSLikeState;
   reaction?: PartialFACSLikeState;
   speech?: PartialFACSLikeState;
+  speechPerformance?: PartialFACSLikeState;
   manual?: PartialFACSLikeState;
 }
 
@@ -19,6 +20,7 @@ export class MotionMixer {
     result = this.applyLayer(result, input.emotion, "emotion");
     result = this.applyLayer(result, input.reaction, "reaction");
     result = this.applyLayer(result, input.speech, "speech");
+    result = this.applyLayer(result, input.speechPerformance, "speechPerformance");
     result = this.applyLayer(result, input.manual, "manual");
 
     return clampFACSState(result) as FACSLikeState;
@@ -27,7 +29,7 @@ export class MotionMixer {
   private applyLayer(
     base: FACSLikeState,
     layer: PartialFACSLikeState | undefined,
-    mode: "idle" | "emotion" | "reaction" | "speech" | "manual"
+    mode: "idle" | "emotion" | "reaction" | "speech" | "speechPerformance" | "manual"
   ): FACSLikeState {
     if (!layer) return base;
 
@@ -44,6 +46,13 @@ export class MotionMixer {
         } else if (key === "browOuterUp") {
           result[key] += value;
         } else if (additiveFACSKeys.has(key)) {
+          result[key] += value;
+        }
+      } else if (mode === "speechPerformance") {
+        if (key === "mouthOpen" || key === "eyeOpen" || key === "eyeBlinkL" || key === "eyeBlinkR") continue;
+        if (maxFACSKeys.has(key)) {
+          result[key] = Math.max(result[key], value);
+        } else {
           result[key] += value;
         }
       } else if (mode === "idle") {

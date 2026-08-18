@@ -14,6 +14,49 @@ SoullinkLive 的纯 TypeScript 表演引擎。它把情绪/VAD、FACS、Idle 动
 
 这些功能只生成 FACS/参数时间线，不使用原生 `motion3` 候选池，也不包含长语音动作续播。
 
+## 连贯语音动作
+
+`SpeechPerformancePlanner` 根据语义情绪、VAD、语音时长和 Profile 中实际存在的
+FACS 映射生成头部、身体、视线和表情重音。规划器只输出语义键，模型特有的
+`ParamXXX` 由 `ModelProfileAdapter` 处理，因此不需要在 planner 中写死某个
+Live2D 模型的参数名。
+
+```ts
+import {
+  deriveSpeechPerformanceCapabilities,
+  SpeechPerformancePlanner,
+  SoullinkRuntime
+} from "@soullink-emotion/engine";
+
+const capabilities = deriveSpeechPerformanceCapabilities(profile);
+const planner = new SpeechPerformancePlanner();
+const performance = planner.plan({
+  emotion: "happy",
+  durationMs: 4200,
+  intensity: 0.75,
+  confidence: 0.9,
+  capabilities,
+  lifecycleToken: requestId,
+  seed: 20260717
+});
+
+const runtime = new SoullinkRuntime({ profile });
+runtime.startSpeechPerformance(performance, audioClockSeconds, "replace");
+const snapshot = runtime.update(audioClockSeconds, deltaSeconds);
+renderer.setParameters(snapshot.live2dParams);
+```
+
+Profile 缺少某些参数时，能力推导会按具体语义映射过滤对应通道，只保留仍可适配
+的动作；完全没有兼容动作通道时返回空 gesture plan，情绪和 LipSync 仍可继续工作。
+可以使用 `append` 排队连续片段、`interrupt` 立即切换片段，或使用
+`clearSpeechPerformance()` 移除当前 speech-performance 层。手动输入优先级高于该层。
+异步规划时可为同一请求传入相同的单调 `lifecycleToken`；runtime 会拒绝 token 更小的
+迟到计划，避免旧请求覆盖新语音。
+
+Speech performance 不会写入 `mouthOpen`、`eyeOpen` 或眨眼通道。启用语音播放时，
+`LipSyncController` 仍是嘴部开合的唯一来源；表达重音只能叠加安全的 mouth-form、眉毛、
+眼部和效果通道。
+
 ## 快速使用
 
 ```ts

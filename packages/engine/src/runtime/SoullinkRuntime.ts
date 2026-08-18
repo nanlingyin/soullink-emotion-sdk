@@ -40,6 +40,11 @@ import type {
 import { estimateMockSpeechDuration } from "../speech/MockSpeechController";
 import type { AudioLevelAnalyzer } from "../speech/AudioLevelAnalyzer";
 import { LipSyncController } from "../speech/LipSyncController";
+import {
+  sampleSpeechPerformance,
+  type SpeechPerformancePlan,
+  type SpeechPerformanceSample
+} from "../speech/SpeechPerformancePlanner";
 import { VoiceWaitingMotionController, type VoiceWaitingMotionOptions } from "../speech/VoiceWaitingMotionController";
 import { CharacterStateMachine } from "../state/CharacterStateMachine";
 import type { CharacterState } from "../state/CharacterState";
@@ -58,6 +63,8 @@ export interface SoullinkRuntimeOptions {
   motionStyle?: MotionStyleOptions;
   audioLevelAnalyzer?: AudioLevelAnalyzer | null;
 }
+
+export type SpeechPerformanceStartMode = "replace" | "append" | "interrupt";
 
 export interface TriggerIntentOptions {
   seed?: number;
@@ -114,6 +121,10 @@ export class SoullinkRuntime {
   private reaction = new ReactionSequencer();
   private actionPlan = new ActionPlanSequencer();
   private speechParameters = new ParameterPlanSequencer();
+  private speechPerformancePlan: SpeechPerformancePlan | null = null;
+  private speechPerformanceQueue: SpeechPerformancePlan[] = [];
+  private speechPerformanceStartedAt = 0;
+  private speechPerformanceLatestToken: number | null = null;
   private recovery = new RecoveryController();
   private proactive = new ProactiveController();
   private reflectionPulse = new ReflectionPulseController();
@@ -328,6 +339,7 @@ export class SoullinkRuntime {
     this.vadExpressionResidue = this.createVADExpressionResidue(expression, intent);
     this.actionPlan.start(resolvedOptions.actionPlan, reactionStart);
     this.speechParameters.reset();
+    this.clearSpeechPerformance();
     this.emotionState.nudge(intent);
     if (resolvedOptions.vadDelta) this.emotionState.nudgeVAD(resolvedOptions.vadDelta, 0.72);
     if (resolvedOptions.vadTarget) this.emotionState.blendTo(resolvedOptions.vadTarget, 0.68);
@@ -350,6 +362,7 @@ export class SoullinkRuntime {
     timeSeconds: number,
     durationSeconds?: number
   ) {
+    this.clearSpeechPerformance();
     if (durationSeconds !== undefined) {
       this.speechDuration = clamp(durationSeconds, 0.4, 120);
     }
@@ -366,6 +379,52 @@ export class SoullinkRuntime {
 
   clearSpeechMotion() {
     this.speechParameters.reset();
+  }
+
+  startSpeechPerformance(
+    plan: SpeechPerformancePlan | undefined,
+    timeSeconds: number,
+    mode: SpeechPerformanceStartMode = "replace"
+  ): boolean {
+    if (!plan) {
+      this.clearSpeechPerformance();
+      return true;
+    }
+
+    const lifecycleToken = Number.isSafeInteger(plan.lifecycleToken) && Number(plan.lifecycleToken) >= 0
+      ? Number(plan.lifecycleToken)
+      : null;
+    if (
+      lifecycleToken !== null
+      && this.speechPerformanceLatestToken !== null
+      && lifecycleToken < this.speechPerformanceLatestToken
+    ) {
+      return false;
+    }
+    if (lifecycleToken !== null) this.speechPerformanceLatestToken = lifecycleToken;
+
+    const append = mode === "append" && this.speechPerformancePlan !== null;
+    if (append) {
+      this.speechPerformanceQueue.push(plan);
+      const end = this.speechPerformanceEndAt() + this.speechPerformanceQueue
+        .reduce((total, item) => total + item.durationMs / 1000, 0);
+      this.speechDuration = Math.max(this.speechDuration, end - this.stateMachine.phaseStartedAt);
+      return true;
+    }
+
+    this.speechParameters.reset();
+    this.speechPerformanceQueue = [];
+    this.speechPerformancePlan = plan;
+    this.speechPerformanceStartedAt = timeSeconds;
+    this.speechDuration = Math.max(0.4, plan.durationMs / 1000);
+    this.stateMachine.transition("SPEAKING", timeSeconds, true);
+    return true;
+  }
+
+  clearSpeechPerformance() {
+    this.speechPerformancePlan = null;
+    this.speechPerformanceQueue = [];
+    this.speechPerformanceStartedAt = 0;
   }
 
   applyVADTarget(target: Partial<VADVector>, amount = 0.65) {
@@ -421,6 +480,8 @@ export class SoullinkRuntime {
     this.reaction.reset();
     this.actionPlan.reset();
     this.speechParameters.reset();
+    this.clearSpeechPerformance();
+    this.speechPerformanceLatestToken = null;
     this.voiceWaitingMotion.reset();
     this.recovery.reset();
     this.vadGesture.reset();
@@ -482,6 +543,7 @@ export class SoullinkRuntime {
       speechAccentGain: this.motionStyle.speechAccentGain,
       ...audioInput
     });
+    const speechPerformance = this.getSpeechPerformanceSample(timeSeconds);
     const manualLayer = this.getManualLayer();
 
     this.currentFACS = this.applyLipSyncMouthGate(this.mixer.mix({
@@ -489,6 +551,7 @@ export class SoullinkRuntime {
       emotion: emotionLayer,
       reaction: addFACS(addFACS(reactionLayer, reflectionLayer), voiceWaitingLayer),
       speech: speechLayer,
+      speechPerformance: addFACS(speechPerformance.speechGesture, speechPerformance.expressionAccent),
       manual: manualLayer
     }), speechLayer);
     this.currentActionUnits = this.actionUnitSolver.project(this.currentFACS) as FACSActionUnitState;
@@ -655,6 +718,7 @@ export class SoullinkRuntime {
       this.reaction.reset();
       this.actionPlan.reset();
       this.speechParameters.reset();
+      this.clearSpeechPerformance();
       this.stateMachine.transition("IDLE", timeSeconds);
       return;
     }
@@ -664,6 +728,7 @@ export class SoullinkRuntime {
       this.reaction.reset();
       this.actionPlan.reset();
       this.speechParameters.reset();
+      this.clearSpeechPerformance();
       this.stateMachine.transition("IDLE", timeSeconds);
     }
   }
@@ -694,6 +759,25 @@ export class SoullinkRuntime {
     if (this.stateMachine.current !== "SPEAKING") return base;
     const overlay = this.speechParameters.evaluate(timeSeconds);
     return Object.keys(overlay).length ? { ...base, ...overlay } : base;
+  }
+
+  private speechPerformanceEndAt(): number {
+    if (!this.speechPerformancePlan) return this.speechPerformanceStartedAt;
+    return this.speechPerformanceStartedAt + this.speechPerformancePlan.durationMs / 1000;
+  }
+
+  private getSpeechPerformanceSample(timeSeconds: number): SpeechPerformanceSample {
+    while (this.speechPerformancePlan && timeSeconds >= this.speechPerformanceEndAt() && this.speechPerformanceQueue.length > 0) {
+      this.speechPerformanceStartedAt = this.speechPerformanceEndAt();
+      this.speechPerformancePlan = this.speechPerformanceQueue.shift() ?? null;
+    }
+
+    if (!this.speechPerformancePlan) {
+      return { speechGesture: {}, expressionAccent: {}, activeBeatIds: [] };
+    }
+
+    const elapsedMs = Math.max(0, timeSeconds - this.speechPerformanceStartedAt) * 1000;
+    return sampleSpeechPerformance(this.speechPerformancePlan, elapsedMs);
   }
 
   private applyLipSyncMouthGate(facs: FACSLikeState, speechLayer: PartialFACSLikeState): FACSLikeState {
