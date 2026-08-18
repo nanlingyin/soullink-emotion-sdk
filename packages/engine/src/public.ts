@@ -12,6 +12,19 @@
 export {
   // Runtime orchestrator
   SoullinkRuntime,
+  // Semantic speech performance
+  SpeechPerformancePlanner,
+  SPEECH_PERFORMANCE_CURVES,
+  SPEECH_GESTURE_TEMPLATES,
+  SPEECH_EXPRESSION_VARIANTS,
+  speechGestureChannels,
+  speechExpressionChannels,
+  planSpeechPerformance,
+  sampleSpeechPerformance,
+  sampleSpeechPerformanceCurve,
+  deriveSpeechPerformanceCapabilities,
+  createSpeechPerformanceSeed,
+  validateSpeechPerformanceRegistries,
   // Reaction / message classification
   MessageReactionClassifier,
   // Emotion / VAD presets
@@ -75,6 +88,7 @@ export type {
   // Runtime snapshot
   RuntimeSnapshot,
   SoullinkRuntimeOptions,
+  SpeechPerformanceStartMode,
   MotionStyleOptions,
   ResolvedMotionStyle,
   MotionStylePresetName,
@@ -83,4 +97,20 @@ export type {
   IdleActionSchedulerState,
   IdleActionLabel,
   AudioLevelAnalyzer,
+  SpeechGestureChannel,
+  SpeechExpressionChannel,
+  SpeechPerformanceCurveFrame,
+  SpeechPerformanceCurve,
+  SpeechPerformanceCurveId,
+  SpeechGestureTemplate,
+  SpeechPerformanceExpressionVariant,
+  SpeechPerformanceMotionBudget,
+  SpeechPerformancePlanToken,
+  SpeechPerformanceCapabilities,
+  SpeechPerformancePlanInput,
+  SpeechPerformanceGesture,
+  SpeechPerformanceExpression,
+  SpeechPerformancePlan,
+  SpeechPerformanceHistoryEntry,
+  SpeechPerformanceSample,
 } from "./internal";

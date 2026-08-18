@@ -49,6 +49,7 @@ export * from "./speech/LipSyncController";
 export * from "./speech/MockSpeechController";
 export * from "./speech/VoiceWaitingMotionController";
 export * from "./speech/AudioLevelAnalyzer";
+export * from "./speech/SpeechPerformancePlanner";
 export * from "./state/CharacterState";
 export * from "./state/CharacterStateMachine";
 export * from "./mixer/MotionMixer";
