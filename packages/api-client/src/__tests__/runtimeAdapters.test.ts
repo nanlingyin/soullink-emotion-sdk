@@ -32,6 +32,7 @@ describe("runtime adapters", () => {
       url: "https://example.test/llm/speaking-motion/plan",
       body: { speechText: "line", durationSec: 1.2, frameCount: 3 }
     });
+    expect(requests[0].body).not.toHaveProperty("openAI");
   });
 
   it("maps runtime planner input and resolves provider settings lazily", async () => {

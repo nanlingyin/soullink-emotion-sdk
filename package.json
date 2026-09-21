@@ -33,7 +33,7 @@
     "profile:generate": "node ./scripts/generate-profile.mjs --force",
     "ai:test": "node ./scripts/test-ai.mjs",
     "conversation:test": "node --test ./scripts/conversation.test.mjs",
-    "demo:test": "node --test ./scripts/conversation.test.mjs ./scripts/ai-provider-config.test.mjs",
+    "demo:test": "node --test ./scripts/conversation.test.mjs ./scripts/ai-provider-config.test.mjs ./scripts/demo-assets.test.mjs",
     "packages:build": "node ./scripts/run-package-task.mjs build",
     "packages:typecheck": "node ./scripts/run-package-task.mjs typecheck",
     "packages:test": "node ./scripts/run-package-task.mjs test",

@@ -25,7 +25,8 @@ test("loads independent providers from .env without exposing their keys", async 
       "FISH_API_KEY=fish-secret",
       "FISH_REFERENCE_ID=voice-reference",
       "JEV_API_KEY=jev-secret",
-      "JEV_MODEL=typesafe/jev-test"
+      "JEV_MODEL=typesafe/jev-test",
+      "SOULLINK_DEMO_PUBLIC_DIR=custom/demo-public"
     ].join("\n"));
 
     const config = loadAIProviderConfig({ rootDir, env: {} });
@@ -36,12 +37,23 @@ test("loads independent providers from .env without exposing their keys", async 
     assert.equal(config.providers.rivo.apiKey, "rivo-secret");
     assert.equal(config.providers.fish.referenceId, "voice-reference");
     assert.equal(config.providers.jev.model, "typesafe/jev-test");
+    assert.equal(config.demoPublicDir, "custom/demo-public");
 
     const publicConfig = JSON.stringify(publicAIProviderConfig(config));
     assert.equal(publicConfig.includes("openai-secret"), false);
     assert.equal(publicConfig.includes("rivo-secret"), false);
     assert.equal(publicConfig.includes("fish-secret"), false);
     assert.equal(publicConfig.includes("jev-secret"), false);
+  });
+});
+
+test("runtime environment overrides the configured demo public directory", async () => {
+  await withConfigDirectory(async (rootDir) => {
+    const config = loadAIProviderConfig({
+      rootDir,
+      env: { SOULLINK_DEMO_PUBLIC_DIR: "environment/public" }
+    });
+    assert.equal(config.demoPublicDir, "environment/public");
   });
 });
 

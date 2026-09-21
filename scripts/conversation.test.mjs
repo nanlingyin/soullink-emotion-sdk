@@ -1,12 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { validateReplay, sampleReplay, blendParameterPoses, smoothParameterPose, retimeReplay, replayOwnedParameterIds, selectParameters } from "../src/parameter-replay.js";
+import { modelAssetDirectory, modelAssetUrl } from "../src/model-catalog.js";
 import { buildFrameTimes, decodeChoice, parameterAnchors, parameterValueOptions, estimateSpeechDuration, pacedMotionDuration, isDiscreteActionParameter, isHandActionParameter, inferSemanticParameterIds, inferExplicitEffectParameterIds, selectJevParameterIds, compactDecisionAnswers, summarizeDecisionConfidence } from "./conversation-service.mjs";
 
 const metadata = { head: { min: -30, max: 30, default: 0 }, hand: { min: 0, max: 1, default: 0 } };
 const replay = () => ({ durationSec: 1, initialParameters: { head: 0, hand: 0 }, discreteParameterIds: ["hand"], smoothedDiscreteParameterIds: ["hand"], keyframes: [
   { time: 0.5, parameters: { head: -6, hand: 1 } }, { time: 1, parameters: { head: 0, hand: 0 } }
 ] });
+
+test("model URLs use asset directories for public models and model directories for legacy layouts", () => {
+  const model = { assetDir: "avatar-public", modelDir: "avatar-legacy" };
+  assert.equal(modelAssetUrl(model, "avatar.model3.json", "/models"), "/models/avatar-public/avatar.model3.json");
+  assert.equal(modelAssetUrl(model, "avatar.model3.json", "/l2d"), "/l2d/avatar-legacy/avatar.model3.json");
+  assert.equal(modelAssetDirectory(model, "/models"), "avatar-public");
+  assert.equal(modelAssetDirectory(model, "/l2d"), "avatar-legacy");
+});
 
 test("continuous and binary action targets both interpolate with smootherstep", () => {
   const plan = validateReplay(replay(), metadata);

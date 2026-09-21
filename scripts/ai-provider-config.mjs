@@ -45,6 +45,9 @@ export function loadAIProviderConfig(options = {}) {
       model: environment.JEV_MODEL || entries.JEV_MODEL || "~typesafe/jev-latest"
     }
   };
+  const demoPublicDir = environment.SOULLINK_DEMO_PUBLIC_DIR
+    || entries.SOULLINK_DEMO_PUBLIC_DIR
+    || "apps/web/public";
 
   const llmModel = selectModel(
     environment.SOULLINK_LLM_MODEL || entries.SOULLINK_LLM_MODEL || entries.OPENAI_MODEL,
@@ -64,6 +67,7 @@ export function loadAIProviderConfig(options = {}) {
     baseURL,
     llmModel,
     embeddingModel,
+    demoPublicDir,
     availableModels: models,
     providers,
     configPath

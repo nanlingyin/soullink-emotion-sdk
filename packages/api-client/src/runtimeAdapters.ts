@@ -23,6 +23,10 @@ export interface PlannerAdapterOptions {
   getOpenAI?: () => OpenAIProviderRequestConfig | undefined;
 }
 
+export interface MotionPlannerAdapterOptions {
+  client: SoullinkApiClient;
+}
+
 export function createPlannerAdapter(options: PlannerAdapterOptions): PlannerClient {
   return {
     planReaction(input: ReactionPlanInput): Promise<SoullinkExternalPlan> {
@@ -81,7 +85,7 @@ export function createPlannerAdapter(options: PlannerAdapterOptions): PlannerCli
  * endpoint remains provider-neutral; the trusted backend owns the provider
  * credentials and validates the returned parameter plan.
  */
-export function createMotionPlannerAdapter(options: PlannerAdapterOptions): MotionPlannerClient {
+export function createMotionPlannerAdapter(options: MotionPlannerAdapterOptions): MotionPlannerClient {
   return {
     planSpeakingMotion(input: SpeakingMotionInput): Promise<SpeakingMotionResult> {
       return options.client.planSpeakingMotion({
@@ -97,7 +101,6 @@ export function createMotionPlannerAdapter(options: PlannerAdapterOptions): Moti
         characterName: input.characterName,
         characterProfile: input.characterProfile,
         userMessage: input.userMessage,
-        openAI: options.getOpenAI?.()
       });
     }
   };

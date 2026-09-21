@@ -4,6 +4,7 @@ import { FileEmbeddingVectorCache } from "@soullink-emotion/classifier-embedding
 import { SoullinkLLMPlanner, SoullinkSpeakingMotionPlanner } from "@soullink-emotion/planner-openai";
 import { loadAIProviderConfig, publicAIProviderConfig } from "./ai-provider-config.mjs";
 import { createConversationService } from "./conversation-service.mjs";
+import { resolveDemoAssetLayout } from "./demo-assets.mjs";
 
 const MAX_BODY_BYTES = 512 * 1024;
 
@@ -12,7 +13,10 @@ export function createSoullinkAIPlugin(rootDir, environment = process.env) {
     name: "soullink-ai-test-api",
     configureServer(server) {
       const config = loadAIProviderConfig({ rootDir, env: environment });
-      const conversation = createConversationService(rootDir, config.providers);
+      const assets = resolveDemoAssetLayout(rootDir, config.demoPublicDir);
+      const conversation = createConversationService(rootDir, config.providers, {
+        modelsRoot: assets.modelsRoot
+      });
       server.httpServer?.once("close", () => void conversation.close());
       const planner = new SoullinkLLMPlanner({
         apiKey: config.apiKey,

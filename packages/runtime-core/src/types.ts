@@ -291,6 +291,8 @@ export interface SpeakRequest {
   emotion?: string;
   vad?: Partial<VADVector>;
   intent?: EmotionIntent | null;
+  /** Optional parameter keyframes returned with the reaction plan. */
+  parameterPlan?: SoullinkParameterBeat[];
   planSpeakingMotion?: boolean;
   force?: boolean;
   userMessage?: string;

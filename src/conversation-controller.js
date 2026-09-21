@@ -1,5 +1,6 @@
 import { createIcons, Send, Square, Play, RotateCcw, Download, ZoomIn, ZoomOut, Scan } from "lucide";
 import { validateReplay, sampleReplay, blendParameterPoses, smoothParameterPose, replayOwnedParameterIds, selectParameters } from "./parameter-replay.js";
+import { modelAssetDirectory } from "./model-catalog.js";
 
 const entryDurationSec = 0.85;
 const releaseDurationSec = 0.6;
@@ -185,7 +186,7 @@ export function createConversationController({ getMetadata, capturePose, getMode
           return buffer;
         });
       const motionTask = post("/api/jev/parameter-plan", { id, keyframesPerSecond: Number($("conversation-hz").value),
-        modelAssetDir: getModel().assetDir, availableParameters: getMetadata(), initialParameters: initial }, signal).then(plan => {
+        modelAssetDir: modelAssetDirectory(getModel()), availableParameters: getMetadata(), initialParameters: initial }, signal).then(plan => {
           signal.throwIfAborted();
           validateReplay(plan, getMetadata());
           motionReady = true;

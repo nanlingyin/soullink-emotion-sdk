@@ -259,6 +259,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
           emotion: plan.intent.naturalEmotion ?? plan.intent.emotion,
           vad: plan.vadTarget ?? plan.intent.naturalVAD ?? currentVAD,
           intent: plan.intent,
+          parameterPlan: plan.parameterPlan,
           planSpeakingMotion: true,
           userMessage: message
         });
@@ -696,7 +697,9 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
       const pendingSpeechMotion: SoullinkParameterBeat[] | undefined =
         motion?.provider !== "vad-facs" && motion?.parameterPlan?.length
           ? motion.parameterPlan
-          : undefined;
+          : request.parameterPlan?.length
+            ? request.parameterPlan
+            : undefined;
 
       if (requestId !== voiceRequestId) return finished();
       voiceStatus = "playing";

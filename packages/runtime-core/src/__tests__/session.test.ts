@@ -67,6 +67,12 @@ function createReactionPlan(replyDraft: string): SoullinkExternalPlan {
       contextTags: []
     },
     replyDraft,
+    parameterPlan: [{
+      time: 0,
+      duration: 0.8,
+      label: "reaction-plan-motion",
+      parameters: { ParamMouthForm: 0.55 }
+    }],
     vadTarget: { valence: 0.4, arousal: 0.3, dominance: 0.2 },
     provider: "openai-compatible"
   };
@@ -255,6 +261,54 @@ describe("createSoullinkSession", () => {
 
     clock.tick(0.1, 0.1);
     expect(runtime.getSnapshot().facs.mouthSmile).toBeGreaterThan(0);
+    session.stop();
+  });
+
+  it("plays reaction parameter keyframes when no independent motion planner is configured", async () => {
+    const clock = createManualClock(0);
+    const playbackFinished = deferred<void>();
+    const parameterPlan = [{
+      time: 0,
+      duration: 0.8,
+      label: "reaction-motion",
+      parameters: { ParamMouthForm: 0.55 }
+    }];
+    const textModel: TextModelClient = {
+      async planReaction() {
+        return { ...createReactionPlan("动作测试"), parameterPlan };
+      }
+    };
+    const voiceModel: TtsClient = {
+      async synthesize() {
+        return { url: "blob:reaction-motion", durationSec: 1.5 };
+      }
+    };
+    const audio: AudioSink = {
+      async play() {
+        return { durationSec: 1.5, finished: playbackFinished.promise };
+      },
+      stop() {
+        playbackFinished.resolve();
+      }
+    };
+    const session = createSoullinkSession({
+      profile: createTestProfile(),
+      persona: amanePersona,
+      textModel,
+      voiceModel,
+      audio,
+      clock
+    });
+    session.start();
+    const runtime = session.getRuntime()!;
+    const startSpeechMotion = vi.spyOn(runtime, "startSpeechMotion");
+    const sending = session.sendMessage("请做动作", { awaitReply: true });
+
+    await vi.waitFor(() => expect(startSpeechMotion).toHaveBeenCalledWith(parameterPlan, expect.any(Number), 1.5));
+    expect(runtime.getSnapshot().plan?.parameterBeatCount).toBe(1);
+
+    playbackFinished.resolve();
+    await sending;
     session.stop();
   });
 

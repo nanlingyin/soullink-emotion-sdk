@@ -174,6 +174,12 @@ export function findModel(modelId) {
   return modelCatalog.find((model) => model.id === modelId || model.aliases?.includes(modelId)) ?? modelCatalog[0];
 }
 
-export function modelAssetUrl(model, fileName) {
-  return `/models/${model.assetDir ?? model.modelDir}/${fileName}`;
+export function modelAssetUrl(model, fileName, baseUrl) {
+  const root = baseUrl ?? globalThis.__SOULLINK_MODEL_BASE_URL__ ?? (model.assetDir ? "/models" : "/l2d");
+  return `${root.replace(/\/+$/u, "")}/${modelAssetDirectory(model, root)}/${fileName}`;
+}
+
+export function modelAssetDirectory(model, baseUrl) {
+  const root = baseUrl ?? globalThis.__SOULLINK_MODEL_BASE_URL__ ?? (model.assetDir ? "/models" : "/l2d");
+  return root === "/l2d" ? model.modelDir ?? model.assetDir : model.assetDir ?? model.modelDir;
 }

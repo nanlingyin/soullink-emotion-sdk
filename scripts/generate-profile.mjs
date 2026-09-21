@@ -1,17 +1,14 @@
-import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Live2DProfileAutoGenerator } from "@soullink-emotion/profile-generator";
+import { loadAIProviderConfig } from "./ai-provider-config.mjs";
+import { resolveDemoAssetLayout } from "./demo-assets.mjs";
 import { modelCatalog } from "../src/model-catalog.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const configuredPublicDir = process.env.SOULLINK_DEMO_PUBLIC_DIR || "apps/web/public";
-const configuredModelsRoot = resolve(root, configuredPublicDir, "models");
-const legacyModelsRoot = resolve(root, "l2d");
-const usePublicModels = existsSync(configuredModelsRoot);
-const modelsRoot = usePublicModels ? configuredModelsRoot : legacyModelsRoot;
-const modelsBaseUrl = usePublicModels ? "/models" : "/l2d";
+const configuredPublicDir = loadAIProviderConfig({ rootDir: root }).demoPublicDir;
+const { modelsRoot, modelsBaseUrl, usePublicModels } = resolveDemoAssetLayout(root, configuredPublicDir);
 const localModelDir = (model) => usePublicModels ? (model.assetDir ?? model.modelDir) : model.modelDir;
 const force = process.argv.includes("--force");
 const modelOptionIndex = process.argv.indexOf("--model");

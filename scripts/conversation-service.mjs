@@ -251,8 +251,9 @@ export function selectJevParameterIds(parameters, actionAnswers = {}, consistenc
     .map(parameter => parameter.id);
 }
 
-export function createConversationService(root, providers) {
+export function createConversationService(root, providers, options = {}) {
   const directory = resolve(root, "output/conversations");
+  const modelsRoot = resolve(root, options.modelsRoot ?? "apps/web/public/models");
   const dispatcher = new EnvHttpProxyAgent();
   const turns = new Map();
   const pendingWrites = new Map();
@@ -364,7 +365,7 @@ export function createConversationService(root, providers) {
     if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > 60 || ![1, 2, 4].includes(hz)) throw new Error("Invalid planning duration or keyframe rate (maximum 60 seconds)");
     if (!turn.reply) throw new Error("Generate a reply before planning motion");
     if (!/^[a-z0-9][a-z0-9-]{0,80}$/i.test(input.modelAssetDir ?? "")) throw new Error("Invalid model asset directory");
-    const modelDirectory = resolve(root, "apps/web/public/models", input.modelAssetDir);
+    const modelDirectory = resolve(modelsRoot, input.modelAssetDir);
     const modelFiles = await readdir(modelDirectory);
     const physicsFile = modelFiles.find(file => /\.physics3\.json$/iu.test(file));
     if (!physicsFile) throw new Error(`No physics3 file found for model ${input.modelAssetDir}`);
