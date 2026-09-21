@@ -2,8 +2,11 @@ export const modelCatalog = [
   {
     id: "blondegirl",
     modelDir: "Blondegirl-test",
-    modelFile: "Blondegirl.model3.json",
-    displayName: "Blondegirl",
+    assetDir: "lilyabee",
+    modelFile: "lilyabee.model3.json",
+    displayName: "LilyaBee",
+    aliases: ["lilyabee"],
+    supportsJev: true,
     profileOverrides: {
       expressionMap: {
         angry: "exp_03",
@@ -16,10 +19,30 @@ export const modelCatalog = [
     view: { scale: 1, x: 0, y: 0 }
   },
   {
+    id: "blondegirl-v2",
+    modelDir: "blondegirl-v2",
+    assetDir: "blondegirl-v2",
+    modelFile: "Blondegirl.model3.json",
+    displayName: "Blondegirl v2",
+    supportsJev: true,
+    profileOverrides: {
+      expressionMap: {
+        confused: "exp_01",
+        shy: "exp_02",
+        angry: "exp_03",
+        excited: "exp_04",
+        sad: "exp_05"
+      }
+    },
+    view: { scale: 1, x: 0, y: 0 }
+  },
+  {
     id: "bee",
     modelDir: "bee-special",
+    assetDir: "bee",
     modelFile: "LilyaBee.model3.json",
     displayName: "Lilya Bee",
+    supportsJev: true,
     profileOverrides: {
       parameterMap: {
         mouthPucker: { target: "Param2", mode: "set", scale: 1, min: 0, max: 1 },
@@ -80,15 +103,19 @@ export const modelCatalog = [
   {
     id: "hiyori",
     modelDir: "hiyori",
+    assetDir: "hiyori",
     modelFile: "hiyori_pro_t11.model3.json",
     displayName: "Hiyori",
+    supportsJev: true,
     view: { scale: 1, x: 0, y: 0 }
   },
   {
-    id: "shizuku",
-    modelDir: "shizuku",
-    modelFile: "shizuku.model3.json",
-    displayName: "Shizuku",
+    id: "l2d-2",
+    modelDir: "l2d-2",
+    assetDir: "l2d-2",
+    modelFile: "lilyabee.model3.json",
+    displayName: "Lilya Bee 2",
+    supportsJev: true,
     unsupportedFallbackParameters: ["eyeSmile", "tear"],
     profileOverrides: {
       parameterMap: {
@@ -116,12 +143,43 @@ export const modelCatalog = [
     },
     view: { scale: 1, x: 0, y: 0 }
   }
+  ,{
+    id: "lilyabee-2", assetDir: "lilyabee-2", modelFile: "LilyaBee.model3.json", displayName: "LilyaBee 2", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "lilyabee-8192", assetDir: "lilyabee-8192", modelFile: "lilyabee.model3.json", displayName: "LilyaBee 8192", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "l2d", assetDir: "l2d", modelFile: "lilyabee.model3.json", displayName: "Lilya Bee L2D", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "amane-2048", assetDir: "amane-2048", modelFile: "amane.model3.json", displayName: "栖灵 2048", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "amanexinmoxin", assetDir: "amanexinmoxin", modelFile: "动作.model3.json", displayName: "栖灵动作版", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "bee-2", assetDir: "bee-2", modelFile: "shaonv.model3.json", displayName: "少女模型", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "newamane", assetDir: "newamane", modelFile: "amane.model3.json", displayName: "栖灵新版", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "newamane-2", assetDir: "newamane-2", modelFile: "amane.model3.json", displayName: "栖灵新版 2", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "newamane-3", assetDir: "newamane-3", modelFile: "amane.model3.json", displayName: "栖灵新版 3", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "uploaded-model", assetDir: "uploaded-model", modelFile: "樱恋.model3.json", displayName: "樱恋", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "uploaded-model-2", assetDir: "uploaded-model-2", modelFile: "樱恋.model3.json", displayName: "樱恋 2", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  },{
+    id: "uploaded-model-3", assetDir: "uploaded-model-3", modelFile: "樱恋.model3.json", displayName: "樱恋 3", supportsJev: true, view: { scale: 1, x: 0, y: 0 }
+  }
 ];
 
 export function findModel(modelId) {
-  return modelCatalog.find((model) => model.id === modelId) ?? modelCatalog[0];
+  return modelCatalog.find((model) => model.id === modelId || model.aliases?.includes(modelId)) ?? modelCatalog[0];
 }
 
-export function modelAssetUrl(model, fileName) {
-  return `/l2d/${model.modelDir}/${fileName}`;
+export function modelAssetUrl(model, fileName, baseUrl) {
+  const root = baseUrl ?? globalThis.__SOULLINK_MODEL_BASE_URL__ ?? (model.assetDir ? "/models" : "/l2d");
+  return `${root.replace(/\/+$/u, "")}/${modelAssetDirectory(model, root)}/${fileName}`;
+}
+
+export function modelAssetDirectory(model, baseUrl) {
+  const root = baseUrl ?? globalThis.__SOULLINK_MODEL_BASE_URL__ ?? (model.assetDir ? "/models" : "/l2d");
+  return root === "/l2d" ? model.modelDir ?? model.assetDir : model.assetDir ?? model.modelDir;
 }

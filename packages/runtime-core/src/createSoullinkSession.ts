@@ -19,6 +19,7 @@ import type {
   MotionParameterInfo,
   PersonaConfig,
   PlannerClient,
+  MotionPlannerClient,
   ProactiveDraft,
   ProactivePlanResult,
   SessionSnapshot,
@@ -48,8 +49,10 @@ const DEFAULT_SPEAKING_MOTION_SCHEDULING = {
  */
 export function createSoullinkSession(options: SoullinkSessionOptions): SoullinkSession {
   const persona: PersonaConfig = options.persona;
-  const planner: PlannerClient | undefined = options.planner;
-  const tts: TtsClient | undefined = options.tts;
+  const planner: PlannerClient | undefined = options.textModel ?? options.planner;
+  const motionPlanner: MotionPlannerClient | undefined = options.motionPlanner ??
+    (planner?.planSpeakingMotion ? { planSpeakingMotion: planner.planSpeakingMotion.bind(planner) } : undefined);
+  const tts: TtsClient | undefined = options.voiceModel ?? options.tts;
   const classifier: MessageClassifier | undefined = options.classifier;
   const clock: Clock = options.clock ?? createRafClock();
   const audio: AudioSink | undefined = options.audio;
@@ -242,20 +245,21 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
       });
       if (requestId !== reactionRequestId) return;
 
+      // Forward the complete planner result so JEV action/VAD intent reaches the
+      // engine. The runtime owns sequencing and smoothing for all plan fields.
+      runtime.triggerPlan(plan, now());
+
       if (plan.replyDraft) {
         conversation = [...conversation, { role: "assistant", content: plan.replyDraft }];
         lastReply = plan.replyDraft;
         emit();
-
-        if (plan.vadTarget) {
-          runtime.applyVADTarget(plan.vadTarget, 0.5);
-        }
 
         await speak({
           text: plan.replyDraft,
           emotion: plan.intent.naturalEmotion ?? plan.intent.emotion,
           vad: plan.vadTarget ?? plan.intent.naturalVAD ?? currentVAD,
           intent: plan.intent,
+          parameterPlan: plan.parameterPlan,
           planSpeakingMotion: true,
           userMessage: message
         });
@@ -566,7 +570,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
     const emotion = request.emotion?.trim();
     if (!emotion) return null;
 
-    const variant = persona.variantByEmotion[emotion] ?? "neutral_ack";
+    const variant = persona.variantByEmotion?.[emotion] ?? "neutral_ack";
     return {
       emotion,
       variant,
@@ -612,7 +616,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
     requestId: number
   ): Promise<SpeakingMotionResult> {
     try {
-      return await planner!.planSpeakingMotion!(input);
+      return await motionPlanner!.planSpeakingMotion(input);
     } catch (cause) {
       const fallbackReason = describeError(cause);
       if (requestId === voiceRequestId && voiceStatus === "loading") {
@@ -666,7 +670,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
         vad: request.vad,
         intent: request.intent
       });
-      const shouldPlanSpeakingMotion = Boolean(request.planSpeakingMotion && planner?.planSpeakingMotion);
+      const shouldPlanSpeakingMotion = Boolean(request.planSpeakingMotion && motionPlanner?.planSpeakingMotion);
       const parallelMotionTask =
         shouldPlanSpeakingMotion && speakingMotionScheduling.mode === "fixed-parallel"
           ? requestSpeakingMotion(
@@ -693,7 +697,9 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
       const pendingSpeechMotion: SoullinkParameterBeat[] | undefined =
         motion?.provider !== "vad-facs" && motion?.parameterPlan?.length
           ? motion.parameterPlan
-          : undefined;
+          : request.parameterPlan?.length
+            ? request.parameterPlan
+            : undefined;
 
       if (requestId !== voiceRequestId) return finished();
       voiceStatus = "playing";
@@ -795,7 +801,7 @@ export function createSoullinkSession(options: SoullinkSessionOptions): Soullink
   // ------------------------------------------------------- proactive intent
 
   function proactiveIntent(emotion: string, intensity: number, sourceMessage: string): EmotionIntent {
-    const variant = persona.variantByEmotion[emotion] ?? "neutral_ack";
+    const variant = persona.variantByEmotion?.[emotion] ?? "neutral_ack";
     return {
       emotion,
       variant,

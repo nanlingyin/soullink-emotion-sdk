@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 import type { NativeAnimationDirective } from "@soullink-emotion/engine";
 import type { Live2DModelInstance } from "./live2dModel";
-import { buildMotionParameters, loadCDIParameterMeta } from "./motionParameters";
+import { buildMotionParameters, loadCDIParameterMeta, readCurrentParameters } from "./motionParameters";
 import type { Live2DMotionParameterInfo, Live2DParamState, Live2DRendererDeps } from "./types";
 
 /**
@@ -16,11 +16,16 @@ export class Live2DRenderer {
   private deps: Live2DRendererDeps;
   private model: Live2DModelInstance | null = null;
   private latestParams: Live2DParamState = {};
+  private renderedParams: Live2DParamState = {};
   private lastNativeAnimToken = -1;
   private suppressedParamIds: Set<string> = new Set();
   private viewScale = 1;
   private viewOffset = { x: 0, y: 0 };
-  private beforeModelUpdate = () => this.applyParametersNow();
+  private beforeModelUpdate = () => {
+    this.applyParametersNow();
+    // Cubism restores saved values after updating geometry, so capture here.
+    this.renderedParams = readCurrentParameters(this.model?.internalModel?.coreModel);
+  };
   private resizeObserver: ResizeObserver;
 
   constructor(container: HTMLElement, deps: Live2DRendererDeps = {}) {
@@ -70,6 +75,11 @@ export class Live2DRenderer {
 
   setParameters(params: Live2DParamState) {
     this.latestParams = params;
+  }
+
+  /** Last pose used to update model geometry, including native motion and physics. */
+  getParameters(): Live2DParamState {
+    return { ...this.renderedParams };
   }
 
   get suppressedParameterIds(): ReadonlySet<string> {
@@ -165,6 +175,7 @@ export class Live2DRenderer {
       baseTexture: true
     });
     this.model = null;
+    this.renderedParams = {};
     // Reset native animation state so a fresh load re-applies the current directive.
     this.lastNativeAnimToken = -1;
     this.suppressedParamIds = new Set();

@@ -3,14 +3,21 @@ import { EmbeddingMessageClassifier, QwenEmbeddingClient } from "@soullink-emoti
 import { FileEmbeddingVectorCache } from "@soullink-emotion/classifier-embedding/node";
 import { SoullinkLLMPlanner, SoullinkSpeakingMotionPlanner } from "@soullink-emotion/planner-openai";
 import { loadAIProviderConfig, publicAIProviderConfig } from "./ai-provider-config.mjs";
+import { createConversationService } from "./conversation-service.mjs";
+import { resolveDemoAssetLayout } from "./demo-assets.mjs";
 
-const MAX_BODY_BYTES = 64 * 1024;
+const MAX_BODY_BYTES = 512 * 1024;
 
-export function createSoullinkAIPlugin(rootDir) {
+export function createSoullinkAIPlugin(rootDir, environment = process.env) {
   return {
     name: "soullink-ai-test-api",
     configureServer(server) {
-      const config = loadAIProviderConfig({ rootDir });
+      const config = loadAIProviderConfig({ rootDir, env: environment });
+      const assets = resolveDemoAssetLayout(rootDir, config.demoPublicDir);
+      const conversation = createConversationService(rootDir, config.providers, {
+        modelsRoot: assets.modelsRoot
+      });
+      server.httpServer?.once("close", () => void conversation.close());
       const planner = new SoullinkLLMPlanner({
         apiKey: config.apiKey,
         baseURL: config.baseURL,
@@ -65,6 +72,8 @@ export function createSoullinkAIPlugin(rootDir) {
           return;
         }
 
+        const controller = new AbortController();
+        response.once("close", () => { if (!response.writableEnded) controller.abort(); });
         try {
           if (request.method === "GET" && (pathname === "/api" || pathname === "/api/health")) {
             sendJSON(response, 200, {
@@ -72,6 +81,53 @@ export function createSoullinkAIPlugin(rootDir) {
               service: "soullink-local-ai-test",
               ...publicAIProviderConfig(config)
             });
+            return;
+          }
+
+          if (request.method === "POST" && pathname === "/api/conversation/reply") {
+            const body = await readJSONBody(request);
+            const message = typeof body.message === "string" ? body.message.trim() : "";
+            if (!message) {
+              sendJSON(response, 400, { error: "message is required" });
+              return;
+            }
+            const result = await conversation.reply({
+              message,
+              conversation: Array.isArray(body.conversation) ? body.conversation : [],
+              characterName: typeof body.characterName === "string" ? body.characterName : "LilyaBee",
+              characterProfile: typeof body.characterProfile === "string" ? body.characterProfile : "温和、自然、有表现力的 Live2D 角色"
+            }, controller.signal);
+            sendJSON(response, 200, result);
+            return;
+          }
+
+          if (request.method === "POST" && pathname === "/api/tts/fish") {
+            const body = await readJSONBody(request);
+            const audio = await conversation.tts(body, controller.signal);
+            response.statusCode = 200;
+            response.setHeader("Content-Type", audio.contentType);
+            response.setHeader("Cache-Control", "no-store");
+            response.end(Buffer.from(audio.bytes));
+            return;
+          }
+
+          if (request.method === "POST" && pathname === "/api/jev/parameter-plan") {
+            const body = await readJSONBody(request);
+            const plan = await conversation.plan(body, controller.signal);
+            sendJSON(response, 200, plan);
+            return;
+          }
+
+          if (request.method === "GET" && pathname.startsWith("/api/conversation/report/")) {
+            sendJSON(response, 200, await conversation.getTurn(pathname.split("/").at(-1)));
+            return;
+          }
+          if (request.method === "POST" && pathname === "/api/conversation/ready") {
+            sendJSON(response, 200, await conversation.ready(await readJSONBody(request)));
+            return;
+          }
+          if (request.method === "POST" && pathname === "/api/conversation/playback") {
+            sendJSON(response, 200, await conversation.playback(await readJSONBody(request)));
             return;
           }
 
@@ -179,6 +235,7 @@ export function createSoullinkAIPlugin(rootDir) {
     }
   };
 }
+
 
 function readJSONBody(request) {
   return new Promise((resolve, reject) => {

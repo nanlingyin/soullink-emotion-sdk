@@ -5,5 +5,9 @@
   },
   "include": [
     "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/__tests__/**",
+    "vitest.config.ts"
   ]
 }

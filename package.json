@@ -1,13 +1,27 @@
 {
   "name": "soullink-emotion-sdk",
-  "version": "0.1.0-beta.1",
+  "version": "0.2.0-beta.1",
   "description": "Real-time character emotion and performance SDK with a local browser lab.",
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nanlingyin/soullink-emotion-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nanlingyin/soullink-emotion-sdk/issues"
+  },
+  "homepage": "https://github.com/nanlingyin/soullink-emotion-sdk#readme",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*"
   ],
+  "overrides": {
+    "qs": "6.16.0",
+    "postcss": "8.5.28",
+    "nanoid": "3.3.19",
+    "esbuild": "0.28.2"
+  },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
   },
@@ -18,6 +32,8 @@
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "profile:generate": "node ./scripts/generate-profile.mjs --force",
     "ai:test": "node ./scripts/test-ai.mjs",
+    "conversation:test": "node --test ./scripts/conversation.test.mjs",
+    "demo:test": "node --test ./scripts/conversation.test.mjs ./scripts/ai-provider-config.test.mjs ./scripts/demo-assets.test.mjs",
     "packages:build": "node ./scripts/run-package-task.mjs build",
     "packages:typecheck": "node ./scripts/run-package-task.mjs typecheck",
     "packages:test": "node ./scripts/run-package-task.mjs test",
@@ -25,20 +41,22 @@
     "audit:production": "npm audit --omit=dev --registry=https://registry.npmjs.org",
     "typecheck": "npm run packages:typecheck",
     "test": "npm run packages:test",
-    "release:check": "npm run packages:build && npm run packages:typecheck && npm run packages:test && npm run packages:pack:check && npm run audit:production"
+    "release:check": "npm run packages:build && npm run packages:typecheck && npm run packages:test && npm run demo:test && vite build && npm run packages:pack:check && npm run audit:production"
   },
   "dependencies": {
-    "@soullink-emotion/api-client": "0.1.0-beta.1",
-    "@soullink-emotion/classifier-embedding": "0.1.0-beta.1",
-    "@soullink-emotion/engine": "0.1.0-beta.1",
-    "@soullink-emotion/live2d-pixi": "0.1.0-beta.1",
-    "@soullink-emotion/planner-openai": "0.1.0-beta.1",
-    "@soullink-emotion/profile-generator": "0.1.0-beta.1",
-    "@soullink-emotion/runtime-core": "0.1.0-beta.1",
+    "@soullink-emotion/api-client": "0.2.0-beta.1",
+    "@soullink-emotion/classifier-embedding": "0.2.0-beta.1",
+    "@soullink-emotion/engine": "0.2.0-beta.1",
+    "@soullink-emotion/live2d-pixi": "0.2.0-beta.1",
+    "@soullink-emotion/planner-openai": "0.2.0-beta.1",
+    "@soullink-emotion/profile-generator": "0.2.0-beta.1",
+    "@soullink-emotion/runtime-core": "0.2.0-beta.1",
     "pixi-live2d-display": "0.5.0-beta",
     "pixi.js": "7.4.3"
   },
   "devDependencies": {
+    "lucide": "^1.47.0",
+    "undici": "^6.28.1",
     "vite": "7.3.6"
   }
 }

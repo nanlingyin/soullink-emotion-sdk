@@ -1,4 +1,6 @@
 import "./style.css";
+import { createConversationController, refreshConversationIcons } from "./conversation-controller.js";
+import { validateReplay, sampleReplay } from "./parameter-replay.js";
 import { createSoullinkApiClient } from "@soullink-emotion/api-client";
 import {
   detectCapabilities,
@@ -195,6 +197,10 @@ const elements = {
   message: document.querySelector("#message"),
   reactionSubmit: document.querySelector("#reaction-submit"),
   reactionSubmitLabel: document.querySelector("#reaction-submit-label"),
+  conversationSubmit: document.querySelector("#conversation-submit"),
+  conversationResult: document.querySelector("#conversation-result"),
+  conversationStatus: document.querySelector("#conversation-status"),
+  conversationDuration: document.querySelector("#conversation-duration"),
   aiResult: document.querySelector("#ai-result"),
   aiResultSource: document.querySelector("#ai-result-source"),
   aiResultEmotion: document.querySelector("#ai-result-emotion"),
@@ -208,6 +214,13 @@ const elements = {
   speakingFrameCount: document.querySelector("#speaking-frame-count"),
   speakingFrameInterval: document.querySelector("#speaking-frame-interval"),
   speakingDuration: document.querySelector("#speaking-duration"),
+  jevReplaySelect: document.querySelector("#jev-replay-select"),
+  jevReplayPlay: document.querySelector("#jev-replay-play"),
+  jevReplayStop: document.querySelector("#jev-replay-stop"),
+  jevReplayStatus: document.querySelector("#jev-replay-status"),
+  jevReplayProgress: document.querySelector("#jev-replay-progress"),
+  jevReplayTime: document.querySelector("#jev-replay-time"),
+  jevReplayCoverage: document.querySelector("#jev-replay-coverage"),
   emotion: document.querySelector("#emotion"),
   valence: document.querySelector("#valence"),
   arousal: document.querySelector("#arousal"),
@@ -275,11 +288,23 @@ let modelParameters = {};
 let speakingMotionMode = "fixed-parallel";
 let speakingMotionBusy = false;
 let lastSpeakingMotionPlan = null;
+let jevReplay = null;
 const manualFacs = {};
+let renderedParameters = {};
+const conversation = createConversationController({
+  getMetadata: () => modelParameters,
+  capturePose: () => {
+    const actual = renderer.getParameters();
+    return Object.fromEntries(Object.entries(modelParameters).map(([id, p]) => [id, Math.max(p.min, Math.min(p.max, actual[id] ?? renderedParameters[id] ?? p.default))]));
+  },
+  getModel: () => activeModel,
+  setStatus,
+  onStart: () => { stopJevReplay(); runtime.clearSpeechMotion(); manualNativeAnimation = false; renderer.applyNativeAnimation(null); }
+});
 
 function setStatus(text, kind = "ready") {
   elements.status.className = `status ${kind}`;
-  elements.status.innerHTML = `<span></span>${text}`;
+  elements.status.replaceChildren(document.createElement("span"), document.createTextNode(text));
 }
 
 function triggerLocalMessage(message) {
@@ -352,7 +377,10 @@ async function triggerMessage(message) {
 function setReactionMode(mode) {
   if (!(mode in reactionModeLabels)) return;
   reactionMode = mode;
-  elements.reactionSubmitLabel.textContent = reactionModeLabels[mode];
+  elements.reactionSubmitLabel.textContent = document.querySelector("#conversation-enabled").checked ? "发送消息" : reactionModeLabels[mode];
+  const voiceMode = document.querySelector("#conversation-enabled").checked;
+  document.querySelector(".reaction-mode").hidden = voiceMode;
+  document.querySelector(".provider-status").hidden = voiceMode;
   for (const button of document.querySelectorAll("[data-reaction-mode]")) {
     const active = button.dataset.reactionMode === mode;
     button.classList.toggle("active", active);
@@ -488,6 +516,111 @@ function stopSpeakingMotion() {
   runtime.clearSpeechMotion();
   setStatus("多帧动作已停止");
 }
+
+const jevDiscreteParameterIds = new Set([
+  "Param68", "Param69", "Param70", "Param72", "Param71", "Param73", "Param74",
+  "Param75", "Param76", "Param77", "Param108", "Param86", "Param87"
+]);
+
+function setJevReplayStatus(text, kind = "") {
+  elements.jevReplayStatus.textContent = text;
+  elements.jevReplayStatus.className = `replay-status ${kind}`.trim();
+}
+
+function replayParametersAt(replay, elapsed) {
+  return sampleReplay(replay, elapsed);
+}
+
+function beginJevReplay(replay, label = "JEV") {
+  replay.discreteParameterIds ??= [...jevDiscreteParameterIds];
+  replay.smoothedDiscreteParameterIds ??= [...replay.discreteParameterIds];
+  validateReplay(replay, modelParameters);
+  conversation.stop(false);
+  const keyframes = Array.isArray(replay.keyframes) ? replay.keyframes : [];
+  const modelIds = Object.keys(modelParameters);
+  const replayIds = new Set(keyframes.flatMap((frame) => Object.keys(frame.parameters ?? {})));
+  const covered = modelIds.filter((id) => replayIds.has(id));
+  if (keyframes.length < 2 || covered.length !== modelIds.length) {
+    throw new Error(`参数不匹配：回放 ${covered.length}/${modelIds.length}`);
+  }
+  runtime.clearSpeechMotion();
+  manualNativeAnimation = true;
+  renderer.applyNativeAnimation(null);
+  jevReplay = {
+    replay,
+    startedAt: runtimeTime(),
+    duration: Number(replay.durationSec) || 1,
+    phase: "playing",
+    coverage: covered.length,
+    total: modelIds.length,
+    label,
+    currentParameters: replayParametersAt(replay, 0)
+  };
+  elements.jevReplayCoverage.textContent = `${covered.length}/${modelIds.length} 参数`;
+  elements.jevReplayProgress.style.width = "0%";
+  elements.jevReplayTime.textContent = `0.00 / ${jevReplay.duration.toFixed(2)} s`;
+  setJevReplayStatus("播放中", "playing");
+  setStatus(`${label} 关键帧播放中 · ${covered.length} 参数`);
+  return jevReplay;
+}
+
+async function startJevReplay(replayOverride = null) {
+  if (Object.keys(modelParameters).length === 0) {
+    setJevReplayStatus("模型未就绪", "error");
+    setStatus("模型参数尚未就绪", "error");
+    return;
+  }
+
+    const url = elements.jevReplaySelect.value;
+  elements.jevReplayPlay.disabled = true;
+  setJevReplayStatus("加载中", "playing");
+  try {
+    if (replayOverride) {
+      beginJevReplay(replayOverride, "JEV 测试");
+    } else {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`回放文件 HTTP ${response.status}`);
+      beginJevReplay(await response.json(), "JEV");
+    }
+  } catch (error) {
+    jevReplay = null;
+    setJevReplayStatus("加载失败", "error");
+    elements.jevReplayCoverage.textContent = "参数未加载";
+    setStatus(error instanceof Error ? error.message : String(error), "error");
+  } finally {
+    elements.jevReplayPlay.disabled = false;
+  }
+}
+
+function stopJevReplay() {
+  if (!jevReplay) {
+    setJevReplayStatus("待机");
+    return;
+  }
+  jevReplay = null;
+  manualNativeAnimation = false;
+  elements.jevReplayProgress.style.width = "0%";
+  elements.jevReplayTime.textContent = "0.00 / 1.00 s";
+  setJevReplayStatus("已停止");
+  setStatus("JEV 回放已停止");
+}
+
+function updateJevReplay(now) {
+  if (!jevReplay) return null;
+  const elapsed = Math.max(0, now - jevReplay.startedAt);
+  const clamped = Math.min(jevReplay.duration, elapsed);
+  if (jevReplay.phase === "playing" && elapsed >= jevReplay.duration) {
+    jevReplay.phase = "complete";
+    setJevReplayStatus("已完成");
+    setStatus("JEV 关键帧播放完成");
+  }
+  const progress = jevReplay.duration > 0 ? clamped / jevReplay.duration : 1;
+  jevReplay.currentParameters = replayParametersAt(jevReplay.replay, clamped);
+  elements.jevReplayProgress.style.width = `${(progress * 100).toFixed(2)}%`;
+  elements.jevReplayTime.textContent = `${clamped.toFixed(2)} / ${jevReplay.duration.toFixed(2)} s`;
+  return jevReplay.currentParameters;
+}
+
 
 function speakingMotionDuration(parameterPlan, fallbackInterval) {
   return Math.max(
@@ -657,20 +790,51 @@ function updateView() {
   renderer.setViewScale(scale);
   renderer.setViewOffset({ x, y });
   elements.scaleValue.value = `${scale.toFixed(2)}×`;
+  document.querySelector("#model-zoom-value").value = `${Math.round(scale * 100)}%`;
+  document.querySelector("#model-zoom-out").disabled = scale <= Number(elements.scale.min);
+  document.querySelector("#model-zoom-in").disabled = scale >= Number(elements.scale.max);
   elements.xValue.value = `${x}px`;
   elements.yValue.value = `${y}px`;
+}
+
+function zoomModel(scale) {
+  elements.scale.value = String(Math.max(Number(elements.scale.min), Math.min(Number(elements.scale.max), scale)));
+  updateView();
 }
 
 function buildModelSelector() {
   elements.modelName.textContent = activeModel.displayName;
   document.title = `Soullink Emotion · ${activeModel.displayName}`;
-  for (const model of modelCatalog) {
-    const option = document.createElement("option");
-    option.value = model.id;
-    option.textContent = model.displayName;
-    option.selected = model.id === activeModel.id;
-    elements.modelSelect.appendChild(option);
+  const groups = new Map([["JEV 参数控制", modelCatalog.filter(model => model.supportsJev)], ["本地参数控制", modelCatalog.filter(model => !model.supportsJev)]]);
+  for (const [label, models] of groups) {
+    if (!models.length) continue;
+    const group = document.createElement("optgroup");
+    group.label = label;
+    for (const model of models) {
+      const option = document.createElement("option");
+      option.value = model.id;
+      option.textContent = model.displayName;
+      option.selected = model.id === activeModel.id;
+      group.appendChild(option);
+    }
+    elements.modelSelect.appendChild(group);
   }
+}
+
+function configureJevReplayOptions() {
+  const options = [...elements.jevReplaySelect.options];
+  const matching = options.filter(option => !option.dataset.model || option.dataset.model === activeModel.id);
+  for (const option of options) option.hidden = !matching.includes(option);
+  if (matching.length === 0) {
+    elements.jevReplaySelect.disabled = true;
+    elements.jevReplayPlay.disabled = true;
+    setJevReplayStatus("暂无匹配回放");
+    elements.jevReplayCoverage.textContent = "请生成或导入当前模型的 JEV 关键帧";
+    return;
+  }
+  elements.jevReplaySelect.disabled = false;
+  elements.jevReplayPlay.disabled = false;
+  elements.jevReplaySelect.value = matching[0].value;
 }
 
 function selectMotionStyle(name, announce = true) {
@@ -761,8 +925,13 @@ function animate(timestamp) {
 
   const snapshot = runtime.update(now, delta);
   latestSnapshot = snapshot;
-  renderer.setParameters(snapshot.live2dParams);
-  if (!manualNativeAnimation) {
+  const jevParameters = updateJevReplay(now);
+  const conversationParameters = conversation.update(snapshot.live2dParams);
+  renderedParameters = conversationParameters ? { ...snapshot.live2dParams, ...conversationParameters } : jevParameters ?? snapshot.live2dParams;
+  renderer.setParameters(renderedParameters);
+  if (conversationParameters || jevParameters) {
+    renderer.applyNativeAnimation(null);
+  } else if (!manualNativeAnimation) {
     const activeNativeAnimation =
       snapshot.state === "IDLE" || snapshot.state === "RECOVERING"
         ? null
@@ -779,7 +948,7 @@ function animate(timestamp) {
     elements.valence.textContent = snapshot.vad.current.valence.toFixed(3);
     elements.arousal.textContent = snapshot.vad.current.arousal.toFixed(3);
     elements.dominance.textContent = snapshot.vad.current.dominance.toFixed(3);
-    elements.paramCount.textContent = String(Object.keys(snapshot.live2dParams).length);
+    elements.paramCount.textContent = String(Object.keys(renderedParameters).length);
     elements.fps.textContent = String(displayedFps);
     elements.parameters.textContent = JSON.stringify(
       {
@@ -793,7 +962,7 @@ function animate(timestamp) {
         parameterGain: snapshot.parameterGain,
         bodyMotionGain: snapshot.bodyMotionGain,
         motionStyle: snapshot.motionStyle,
-        live2dParams: snapshot.live2dParams,
+        live2dParams: renderedParameters,
         missingParameters: [...missingParameters]
       },
       null,
@@ -809,6 +978,12 @@ elements.form.addEventListener("submit", async (event) => {
   if (reactionBusy) return;
   const message = elements.message.value.trim();
   if (!message) return;
+  if (document.querySelector("#conversation-enabled").checked) {
+    void conversation.submit(message);
+    return;
+  }
+  conversation.stop(false);
+  stopJevReplay();
   try {
     await triggerMessage(message);
   } catch (error) {
@@ -838,6 +1013,10 @@ for (const input of [elements.speakingFrameCount, elements.speakingFrameInterval
 
 elements.speakingMotionGenerate.addEventListener("click", () => void generateSpeakingMotion());
 document.querySelector("#speaking-motion-stop").addEventListener("click", stopSpeakingMotion);
+elements.jevReplayPlay.addEventListener("click", () => void startJevReplay());
+elements.jevReplayStop.addEventListener("click", stopJevReplay);
+elements.conversationSubmit.addEventListener("click", () => void conversation.submit(elements.message.value.trim()));
+document.querySelector("#conversation-enabled").addEventListener("change", () => { conversation.stop(false); setReactionMode(reactionMode); });
 
 document.querySelector("#emotion-actions").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-emotion]");
@@ -913,9 +1092,25 @@ for (const input of [elements.scale, elements.offsetX, elements.offsetY]) {
   input.addEventListener("input", updateView);
 }
 
+document.querySelector("#model-zoom-out").addEventListener("click", () => zoomModel(Number(elements.scale.value) - 0.1));
+document.querySelector("#model-zoom-in").addEventListener("click", () => zoomModel(Number(elements.scale.value) + 0.1));
+document.querySelector("#model-view-reset").addEventListener("click", () => {
+  elements.offsetX.value = String(activeModel.view.x);
+  elements.offsetY.value = String(activeModel.view.y);
+  zoomModel(activeModel.view.scale);
+});
+elements.stage.addEventListener("wheel", event => {
+  if (event.ctrlKey || event.metaKey) return;
+  event.preventDefault();
+  const delta = event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? elements.stage.clientHeight : 1);
+  zoomModel(Number(elements.scale.value) * Math.exp(-Math.max(-300, Math.min(300, delta)) * 0.0015));
+}, { passive: false });
+
 window.addEventListener("beforeunload", () => renderer.destroy());
 
 buildModelSelector();
+configureJevReplayOptions();
+refreshConversationIcons();
 buildEmotionControls();
 buildFACSControls();
 buildNativeAnimationControls();
@@ -958,6 +1153,10 @@ try {
     get speakingMotionPlan() { return lastSpeakingMotionPlan; },
     get modelParameters() { return modelParameters; },
     get latestSnapshot() { return latestSnapshot; },
+    get jevReplay() { return jevReplay; },
+    startJevReplay,
+    stopJevReplay,
+    get conversation() { return conversation.state; },
     get reactionMode() { return reactionMode; }
   };
   requestAnimationFrame(animate);

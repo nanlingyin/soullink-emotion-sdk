@@ -23,7 +23,12 @@
 
         <div id="stage" class="stage" aria-label="Live2D 模型画布">
           <div class="stage-grid"></div>
-          <div class="stage-hint">拖动缩放与位置滑块调整构图</div>
+          <div class="model-toolbar" role="group" aria-label="模型视图">
+            <button id="model-zoom-out" type="button" class="icon-button" title="缩小模型" aria-label="缩小模型"><i data-lucide="zoom-out"></i></button>
+            <output id="model-zoom-value" aria-label="模型缩放比例">100%</output>
+            <button id="model-zoom-in" type="button" class="icon-button" title="放大模型" aria-label="放大模型"><i data-lucide="zoom-in"></i></button>
+            <button id="model-view-reset" type="button" class="icon-button" title="重置模型视图" aria-label="重置模型视图"><i data-lucide="scan"></i></button>
+          </div>
         </div>
 
         <div class="telemetry">
@@ -38,8 +43,8 @@
 
       <aside class="control-panel">
         <section>
-          <span class="section-index">01 / REACTION</span>
-          <h2>消息驱动</h2>
+          <span class="section-index">01 / CONVERSATION</span>
+          <h2>角色对话</h2>
           <div class="reaction-mode" role="group" aria-label="反应来源">
             <button type="button" class="active" data-reaction-mode="local" aria-pressed="true">本地</button>
             <button type="button" data-reaction-mode="embedding" aria-pressed="false">Embedding</button>
@@ -51,12 +56,33 @@
           </div>
           <form id="message-form">
             <textarea id="message" rows="3" placeholder="例如：考试通过了，这是好消息！">考试通过了，这是好消息！</textarea>
-            <button id="reaction-submit" class="primary" type="submit"><span id="reaction-submit-label">触发本地反应</span><span>↗</span></button>
+            <label class="inline-check"><input id="conversation-enabled" type="checkbox" checked />语音对话 · JEV</label>
+            <button id="reaction-submit" class="primary" type="submit"><span id="reaction-submit-label">发送消息</span><i data-lucide="send"></i></button>
+            <button id="conversation-submit" class="conversation-button" type="button" hidden>发送对话</button>
           </form>
           <div id="ai-result" class="ai-result" hidden>
             <div><span id="ai-result-source">LOCAL</span><strong id="ai-result-emotion">neutral</strong></div>
             <p id="ai-reply"></p>
           </div>
+          <div id="conversation-result" class="conversation-result" hidden aria-live="polite">
+            <div><span id="conversation-status">待机</span><strong id="conversation-duration">0.00 s</strong></div>
+            <p id="conversation-error" role="alert"></p>
+          </div>
+          <ol id="conversation-history" class="conversation-history" aria-label="对话记录" aria-live="polite"></ol>
+          <div class="conversation-settings">
+            <label>语音模型<select id="fish-model"><option>s2.1-pro</option><option>s2.1-pro-free</option><option>s2-pro</option></select></label>
+            <label>关键帧 / 秒<select id="conversation-hz"><option value="1">1</option><option value="2" selected>2</option><option value="4">4</option></select></label>
+          </div>
+          <div class="conversation-toolbar">
+            <button id="conversation-replay" class="icon-button" disabled title="重播语音和动作" aria-label="重播语音和动作"><i data-lucide="play"></i></button>
+            <button id="conversation-stop" class="icon-button" disabled title="停止生成和播放" aria-label="停止生成和播放"><i data-lucide="square"></i></button>
+            <button id="conversation-reset" class="icon-button" title="清空对话" aria-label="清空对话"><i data-lucide="rotate-ccw"></i></button>
+            <a id="conversation-report" class="icon-button" aria-disabled="true" title="下载本轮 JSON" aria-label="下载本轮 JSON"><i data-lucide="download"></i></a>
+            <output id="conversation-clock">0.00 s</output>
+          </div>
+          <progress id="conversation-progress" max="1" value="0" aria-label="语音播放进度"></progress>
+          <small id="conversation-motion-stats"></small>
+          <details class="conversation-details"><summary>JEV 时间线</summary><ol id="conversation-actions"></ol></details>
           <h3>全部情绪预设 <span id="emotion-count">0</span></h3>
           <div class="emotion-grid" id="emotion-actions"></div>
         </section>
@@ -84,6 +110,22 @@
               <span id="speaking-motion-stats">0 帧</span>
             </div>
             <ol id="speaking-motion-timeline"></ol>
+          </div>
+          <div class="jev-replay" aria-label="JEV 关键帧回放">
+            <div class="section-title-row">
+              <h3>JEV 关键帧回放</h3>
+              <span id="jev-replay-status" class="replay-status">待机</span>
+            </div>
+            <div class="replay-controls">
+              <select id="jev-replay-select" aria-label="选择 JEV 回放">
+                <option value="/jev-replays/lilyabee-blink.json" data-model="blondegirl">眨眼 · 1 秒</option>
+                <option value="/jev-replays/lilyabee-nod.json" data-model="blondegirl">点头 · 1 秒</option>
+              </select>
+              <button id="jev-replay-play" class="icon-button" type="button" title="播放 JEV 关键帧" aria-label="播放 JEV 关键帧"><i data-lucide="play"></i></button>
+              <button id="jev-replay-stop" class="icon-button" type="button" title="停止 JEV 回放" aria-label="停止 JEV 回放"><i data-lucide="square"></i></button>
+            </div>
+            <div class="replay-progress" aria-hidden="true"><span id="jev-replay-progress"></span></div>
+            <div class="replay-readout"><span id="jev-replay-time">0.00 / 1.00 s</span><span id="jev-replay-coverage">未加载</span></div>
           </div>
         </section>
 

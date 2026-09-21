@@ -1,8 +1,16 @@
 {
   "name": "@soullink-emotion/devtools-vue",
-  "version": "0.1.0-beta.1",
+  "version": "0.2.0-beta.1",
   "description": "Vue 3 calibration panel for Soullink Emotion model profiles and Live2D parameters.",
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nanlingyin/soullink-emotion-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nanlingyin/soullink-emotion-sdk/issues"
+  },
+  "homepage": "https://github.com/nanlingyin/soullink-emotion-sdk#readme",
   "keywords": [
     "emotion",
     "vue",
@@ -44,11 +52,10 @@
     "pack:check": "npm pack --dry-run"
   },
   "peerDependencies": {
-    "@soullink-emotion/engine": "0.1.0-beta.1",
+    "@soullink-emotion/engine": "^0.2.0-beta.1",
     "vue": "^3.5.0"
   },
   "devDependencies": {
-    "@soullink-emotion/engine": "0.1.0-beta.1",
     "@vitejs/plugin-vue": "^6.0.7",
     "typescript": "^5.9.3",
     "vite": "^8.0.16",

@@ -6,10 +6,30 @@ import {
   parseCDIParameterMeta,
   resolveCDIUrl,
   resolveRelativeURL,
+  readCurrentParameters,
   type Live2DMetadataFetch
 } from "../motionParameters";
 
 describe("Live2D parameter metadata", () => {
+  it("captures Cubism values with raw IDs when the SDK has no getParameterId", () => {
+    const values = new Float32Array([6, 0.5]);
+    const core = {
+      getParameterCount: () => 2,
+      getParameterValueByIndex: (i: number) => values[i]!,
+      _model: { parameters: { ids: ["ParamAngleY", "ParamPhysics"], values } }
+    };
+    const snapshot = readCurrentParameters(core);
+    values[0] = -3;
+    expect(snapshot).toEqual({ ParamAngleY: 6, ParamPhysics: 0.5 });
+    expect(readCurrentParameters(core).ParamAngleY).toBe(-3);
+    expect(readCurrentParameters()).toEqual({});
+    expect(readCurrentParameters({
+      getParameterCount: () => 1,
+      getParameterId: () => "head",
+      getParameterValueByIndex: () => 4
+    })).toEqual({ head: 4 });
+  });
+
   it("indexes CDI parameter names and group names by real parameter id", () => {
     expect(parseCDIParameterMeta({
       Version: 3,

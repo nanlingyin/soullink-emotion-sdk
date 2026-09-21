@@ -47,24 +47,32 @@ without rebuilding the client.
 ```ts
 import {
   createEmbeddingClassifierAdapter,
+  createMotionPlannerAdapter,
   createPlannerAdapter,
   createTtsAdapter
 } from "@soullink-emotion/api-client";
 import { createSoullinkSession } from "@soullink-emotion/runtime-core";
 
-const getOpenAI = () => ({ model: "gpt-4.1-mini" });
-
 const session = createSoullinkSession({
   profile,
   persona,
-  planner: createPlannerAdapter({ client: api, getOpenAI }),
-  classifier: createEmbeddingClassifierAdapter({ client: api, getOpenAI }),
-  tts: createTtsAdapter({
+  textModel: createPlannerAdapter({ client: api }),
+  motionPlanner: createMotionPlannerAdapter({ client: api }),
+  classifier: createEmbeddingClassifierAdapter({ client: api }),
+  voiceModel: createTtsAdapter({
     client: api,
     getProvider: () => "voxcpm2"
   })
 });
 ```
+
+`createMotionPlannerAdapter` is the provider-neutral JEV boundary. It sends
+the CDI/Profile-derived parameter IDs, ranges, current intent, VAD and speech
+timing to the trusted API, then returns the validated parameter keyframes to
+`runtime-core`. It deliberately does not accept or forward an `openAI` request
+configuration; the JEV provider credential belongs to the trusted API. You can
+replace it with a local JEV client by implementing the public
+`MotionPlannerClient` interface directly.
 
 The environment-neutral TTS adapter returns `ArrayBuffer` audio. In a browser,
 use the optional helper to create an object URL and probe the real clip length:
@@ -74,8 +82,7 @@ import { createBrowserTtsAdapter } from "@soullink-emotion/api-client/browser";
 
 const tts = createBrowserTtsAdapter({
   client: api,
-  getProvider: () => "cosyvoice2",
-  getOpenAI
+  getProvider: () => "cosyvoice2"
 });
 ```
 
