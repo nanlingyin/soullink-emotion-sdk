@@ -52,14 +52,28 @@ export interface CubismCoreModelLike {
   getParameterMinimumValue?: (index: number) => number;
   getParameterMaximumValue?: (index: number) => number;
   getParameterDefaultValue?: (index: number) => number;
+  getParameterValueByIndex?: (index: number) => number;
   _model?: {
     parameters?: {
       ids?: string[];
       minimumValues?: number[];
       maximumValues?: number[];
       defaultValues?: number[];
+      values?: ArrayLike<number>;
     };
   };
+}
+
+export function readCurrentParameters(core?: CubismCoreModelLike): Record<string, number> {
+  const raw = core?._model?.parameters;
+  const count = core?.getParameterCount?.() ?? raw?.ids?.length ?? 0;
+  const result: Record<string, number> = {};
+  for (let i = 0; i < count; i++) {
+    const id = core?.getParameterId?.(i) ?? raw?.ids?.[i];
+    const value = core?.getParameterValueByIndex?.(i) ?? raw?.values?.[i];
+    if (id && typeof value === "number" && Number.isFinite(value)) result[id] = value;
+  }
+  return result;
 }
 
 /** Structural input accepted by `buildMotionParameters`; no PIXI class is required. */

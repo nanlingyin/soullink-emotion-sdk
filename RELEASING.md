@@ -6,7 +6,7 @@ version is present in every package and all internal peer dependencies.
 ## Before Publishing
 
 1. Confirm ownership of the `@soullink-emotion` npm scope.
-2. Confirm that every package manifest and tarball includes the MIT license.
+2. Confirm that every package manifest and tarball includes the Apache License 2.0.
 3. Keep the root `api`, `.env*`, model files, archives, logs, and generated
    caches out of the repository and release artifacts.
 4. Run the complete local gate:

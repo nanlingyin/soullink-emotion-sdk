@@ -17,6 +17,7 @@ export type Live2DModelInstance = PIXI.Container & {
       getParameterMinimumValue?: (index: number) => number;
       getParameterMaximumValue?: (index: number) => number;
       getParameterDefaultValue?: (index: number) => number;
+      getParameterValueByIndex?: (index: number) => number;
       setParameterValueById?: (id: string, value: number, weight?: number) => void;
       _model?: {
         parameters?: {

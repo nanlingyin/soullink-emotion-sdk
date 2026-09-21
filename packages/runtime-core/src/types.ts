@@ -39,7 +39,7 @@ export interface PersonaConfig {
   name: string;
   profile: string;
   /** Maps an emotion name to the expression variant used when the character speaks. */
-  variantByEmotion: Record<string, string>;
+  variantByEmotion?: Record<string, string>;
   /** Emotion -> canned reply used when the reaction planner fails. */
   fallbacks?: Record<string, string>;
   /** Emotion -> canned line used when a proactive draft fails to generate. */
@@ -158,6 +158,16 @@ export interface PlannerClient {
   planSpeakingMotion?(input: SpeakingMotionInput): Promise<SpeakingMotionResult>;
 }
 
+/** Text-model port. Kept separate so an application can use a text model and
+ * a JEV/action model from different providers. `PlannerClient` remains a
+ * backwards-compatible alias for hosts that combine these responsibilities. */
+export type TextModelClient = PlannerClient;
+
+/** Optional motion-model port, suitable for JEV or another parameter planner. */
+export interface MotionPlannerClient {
+  planSpeakingMotion(input: SpeakingMotionInput): Promise<SpeakingMotionResult>;
+}
+
 // ---- TTS port ----
 
 export interface TtsContext {
@@ -175,6 +185,9 @@ export interface TtsResult {
 export interface TtsClient {
   synthesize(text: string, ctx: TtsContext): Promise<TtsResult>;
 }
+
+/** Voice-model port. Alias documents the integration boundary for TTS hosts. */
+export type VoiceModelClient = TtsClient;
 
 // ---- Clock port ----
 
@@ -251,7 +264,15 @@ export interface SessionSnapshot {
 export interface SoullinkSessionOptions {
   profile: ModelProfile;
   persona: PersonaConfig;
+  /** Preferred text/reaction model port. `planner` is retained for compatibility. */
+  textModel?: TextModelClient;
+  /** Preferred voice model port. `tts` is retained for compatibility. */
+  voiceModel?: VoiceModelClient;
+  /** Optional independent JEV/action planner. Falls back to `textModel.planSpeakingMotion`. */
+  motionPlanner?: MotionPlannerClient;
+  /** @deprecated Use `textModel`. */
   planner?: PlannerClient;
+  /** @deprecated Use `voiceModel`. */
   tts?: TtsClient;
   classifier?: MessageClassifier;
   clock?: Clock;

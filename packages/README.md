@@ -6,6 +6,8 @@ Soullink Emotion 是一套面向 Live2D 数字角色的情绪表演 SDK。它把
 
 本文先带你运行当前测试项目，再从最小 engine 接入逐步扩展到完整会话、Embedding、Planner/TTS、Profile 生成和模型校准。
 
+如果要把 SDK 接入自己的应用，推荐先阅读[第三方集成教程](../docs/integration-tutorial.md)。教程按实际开发顺序演示了对话模型、语音模型、JEV 动作模型和 Live2D 渲染器的组合方式。
+
 ## 目录
 
 - [先理解整体数据流](#先理解整体数据流)
@@ -235,9 +237,9 @@ npm run profile:generate -- --model bee
 
 ### 3. 添加自己的模型
 
-1. 把模型完整目录放入仓库根目录的 `l2d/<modelDir>`。
+1. 把模型完整目录放入 Demo 公共目录的 `apps/web/public/models/<assetDir>`。也可以通过 `SOULLINK_DEMO_PUBLIC_DIR` 指定公共目录；旧项目仍兼容根目录的 `l2d/<modelDir>`。
 2. 确保目录包含 `.model3.json` 以及它引用的 moc3、纹理和可选 CDI3/exp3/motion3 文件。
-3. 在 `src/model-catalog.js` 增加 `id`、`modelDir`、`modelFile`、`displayName`。
+3. 在 `src/model-catalog.js` 增加 `id`、`assetDir`、`modelFile`、`displayName`。
 4. 运行 `npm run profile:generate -- --model <id>`。
 5. 打开 `http://127.0.0.1:4173/?model=<id>`。
 
@@ -484,7 +486,7 @@ runtime.setBodyMotionGain(1.25); // 头部和身体动作增益，范围 0..4
 
 ## 教程二：使用 runtime-core 管理完整会话
 
-`runtime-core` 适合需要消息队列、Planner、TTS、语音播放、主动事件和统一生命周期的应用。
+`runtime-core` 适合需要消息队列、文字模型、TTS、JEV 动作规划、语音播放、主动事件和统一生命周期的应用。三个模型端口可以独立注入：`textModel`、`voiceModel`、`motionPlanner`；旧的 `planner` 和 `tts` 字段仍兼容。
 
 ### 1. 创建角色和渲染器
 
@@ -607,6 +609,7 @@ renderer.destroy();
 ```ts
 import {
   createEmbeddingClassifierAdapter,
+  createMotionPlannerAdapter,
   createPlannerAdapter,
   createSoullinkApiClient,
   createTtsAdapter
@@ -629,9 +632,10 @@ const api = createSoullinkApiClient({
 const session = createSoullinkSession({
   profile,
   persona,
-  planner: createPlannerAdapter({ client: api }),
+  textModel: createPlannerAdapter({ client: api }),
+  motionPlanner: createMotionPlannerAdapter({ client: api }),
   classifier: createEmbeddingClassifierAdapter({ client: api }),
-  tts: createTtsAdapter({
+  voiceModel: createTtsAdapter({
     client: api,
     getProvider: () => "voxcpm2"
   }),

@@ -13,6 +13,7 @@ export type {
 } from "./SoullinkApiClient";
 export {
   createEmbeddingClassifierAdapter,
+  createMotionPlannerAdapter,
   createPlannerAdapter,
   createTtsAdapter
 } from "./runtimeAdapters";

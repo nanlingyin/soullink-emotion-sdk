@@ -25,6 +25,13 @@ npm install vue pixi.js@^7.4.3 pixi-live2d-display@0.5.0-beta
 See the repository integration guide for package selection and examples:
 <https://github.com/nanlingyin/soullink-emotion-sdk/blob/main/packages/README.md>
 
+## Provider interfaces
+
+The SDK does not bundle provider credentials or force a particular text, voice,
+or motion model. Inject `textModel`, `voiceModel`, and an optional independent
+`motionPlanner` (for example, a JEV adapter) into `createSoullinkSession`.
+The older `planner` and `tts` options remain supported for compatibility.
+
 ## License
 
-MIT. See [LICENSE](./LICENSE).
+Apache License 2.0. See [LICENSE](./LICENSE).

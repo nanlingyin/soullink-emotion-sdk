@@ -11,6 +11,8 @@ packages/*/dist/
 output/
 coverage/
 *.tgz
+*.tsbuildinfo
+.wf_tmp/
 
 # Local browser tooling and logs
 .playwright-cli/
@@ -20,7 +22,13 @@ coverage/
 
 # Locally licensed model assets and archives
 l2d/
+/apps/
+/apiurl/
 *.zip
+*.wav
+*.mp4
+/jev_motion_*.json
+/jev_motion_*.sh
 
 # Editor and operating-system files
 .idea/

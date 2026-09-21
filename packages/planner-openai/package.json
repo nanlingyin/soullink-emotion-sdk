@@ -1,8 +1,16 @@
 {
   "name": "@soullink-emotion/planner-openai",
-  "version": "0.1.0-beta.1",
+  "version": "0.2.0-beta.1",
   "description": "OpenAI-compatible VAD/FACS, reflection, and Live2D speaking-motion planners for Soullink Emotion.",
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nanlingyin/soullink-emotion-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nanlingyin/soullink-emotion-sdk/issues"
+  },
+  "homepage": "https://github.com/nanlingyin/soullink-emotion-sdk#readme",
   "keywords": [
     "emotion",
     "openai-compatible",
@@ -40,10 +48,9 @@
     "pack:check": "npm pack --dry-run"
   },
   "peerDependencies": {
-    "@soullink-emotion/engine": "0.1.0-beta.1"
+    "@soullink-emotion/engine": "^0.2.0-beta.1"
   },
   "devDependencies": {
-    "@soullink-emotion/engine": "0.1.0-beta.1",
     "tsup": "^8.5.0",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

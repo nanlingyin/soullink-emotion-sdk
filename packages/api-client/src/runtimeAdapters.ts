@@ -3,6 +3,7 @@ import type {
   ClassifyResult,
   MessageClassifier,
   PlannerClient,
+  MotionPlannerClient,
   ProactivePlanInput,
   ProactivePlanResult,
   ReactionPlanInput,
@@ -55,6 +56,33 @@ export function createPlannerAdapter(options: PlannerAdapterOptions): PlannerCli
         openAI: options.getOpenAI?.()
       });
     },
+    planSpeakingMotion(input: SpeakingMotionInput): Promise<SpeakingMotionResult> {
+      return options.client.planSpeakingMotion({
+        speechText: input.speechText,
+        durationSec: input.durationSec,
+        mode: input.mode,
+        frameCount: input.frameCount,
+        frameIntervalSec: input.frameIntervalSec,
+        availableParameters: input.availableParameters,
+        intent: input.intent,
+        vad: input.vad,
+        expression: input.expression,
+        characterName: input.characterName,
+        characterProfile: input.characterProfile,
+        userMessage: input.userMessage,
+        openAI: options.getOpenAI?.()
+      });
+    }
+  };
+}
+
+/**
+ * Adapter for an independent speaking-motion provider such as JEV. The API
+ * endpoint remains provider-neutral; the trusted backend owns the provider
+ * credentials and validates the returned parameter plan.
+ */
+export function createMotionPlannerAdapter(options: PlannerAdapterOptions): MotionPlannerClient {
+  return {
     planSpeakingMotion(input: SpeakingMotionInput): Promise<SpeakingMotionResult> {
       return options.client.planSpeakingMotion({
         speechText: input.speechText,

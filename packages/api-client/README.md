@@ -47,6 +47,7 @@ without rebuilding the client.
 ```ts
 import {
   createEmbeddingClassifierAdapter,
+  createMotionPlannerAdapter,
   createPlannerAdapter,
   createTtsAdapter
 } from "@soullink-emotion/api-client";
@@ -57,14 +58,21 @@ const getOpenAI = () => ({ model: "gpt-4.1-mini" });
 const session = createSoullinkSession({
   profile,
   persona,
-  planner: createPlannerAdapter({ client: api, getOpenAI }),
+  textModel: createPlannerAdapter({ client: api, getOpenAI }),
+  motionPlanner: createMotionPlannerAdapter({ client: api, getOpenAI }),
   classifier: createEmbeddingClassifierAdapter({ client: api, getOpenAI }),
-  tts: createTtsAdapter({
+  voiceModel: createTtsAdapter({
     client: api,
     getProvider: () => "voxcpm2"
   })
 });
 ```
+
+`createMotionPlannerAdapter` is the provider-neutral JEV boundary. It sends
+the CDI/Profile-derived parameter IDs, ranges, current intent, VAD and speech
+timing to the trusted API, then returns the validated parameter keyframes to
+`runtime-core`. You can replace it with a local JEV client by implementing the
+public `MotionPlannerClient` interface directly.
 
 The environment-neutral TTS adapter returns `ArrayBuffer` audio. In a browser,
 use the optional helper to create an object URL and probe the real clip length:

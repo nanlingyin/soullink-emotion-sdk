@@ -1,8 +1,16 @@
 {
   "name": "@soullink-emotion/engine",
-  "version": "0.1.0-beta.1",
+  "version": "0.2.0-beta.1",
   "description": "Framework-neutral VAD, FACS, motion, lip-sync, and Live2D parameter engine for real-time characters.",
-  "license": "MIT",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nanlingyin/soullink-emotion-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nanlingyin/soullink-emotion-sdk/issues"
+  },
+  "homepage": "https://github.com/nanlingyin/soullink-emotion-sdk#readme",
   "keywords": [
     "emotion",
     "live2d",

@@ -14,6 +14,8 @@ import type {
   SessionSnapshot,
   SpeakingMotionInput,
   SpeakingMotionResult,
+  MotionPlannerClient,
+  TextModelClient,
   TtsClient,
   TtsResult
 } from "../types";
@@ -209,6 +211,81 @@ describe("createSoullinkSession", () => {
     expect(last.lastReply).toBe("你好呀，我在听。");
     expect(last.conversation.some((turn) => turn.role === "assistant")).toBe(true);
     expect(last.voiceStatus).toBe("idle");
+  });
+
+  it("forwards a planner action plan into the engine runtime", async () => {
+    const clock = createManualClock(0);
+    const planner: PlannerClient = {
+      async planReaction(): Promise<SoullinkExternalPlan> {
+        return {
+          intent: {
+            emotion: "happy",
+            variant: "soft_smile",
+            intensity: 0.72,
+            contextTags: []
+          },
+          actionPlan: [
+            {
+              time: 0,
+              duration: 1,
+              label: "jev-smile",
+              intensity: 1,
+              facs: { mouthSmile: 0.9 }
+            }
+          ],
+          provider: "jev-replay"
+        };
+      }
+    };
+
+    const session = createSoullinkSession({
+      profile: createTestProfile(),
+      persona: amanePersona,
+      planner,
+      clock
+    });
+    session.start();
+
+    await session.sendMessage("我好喜欢你", { awaitReply: true });
+    const runtime = session.getRuntime()!;
+    expect(runtime.getSnapshot().plan).toMatchObject({
+      provider: "jev-replay",
+      actionBeatCount: 1
+    });
+
+    clock.tick(0.1, 0.1);
+    expect(runtime.getSnapshot().facs.mouthSmile).toBeGreaterThan(0);
+    session.stop();
+  });
+
+  it("accepts independent text, voice, and JEV motion ports", async () => {
+    const profile = createTestProfile();
+    const clock = createManualClock(0);
+    const { calls, planner, tts, audio } = makeStubs();
+    const textModel: TextModelClient = {
+      planReaction: planner.planReaction
+    };
+    const voiceModel: TtsClient = tts;
+    const motionPlanner: MotionPlannerClient = {
+      planSpeakingMotion: (input) => planner.planSpeakingMotion!(input)
+    };
+
+    const session = createSoullinkSession({
+      profile,
+      persona: { name: "Ava", profile: "简洁、友善" },
+      textModel,
+      voiceModel,
+      motionPlanner,
+      audio,
+      clock
+    });
+
+    session.start();
+    await session.speak({ text: "由 JEV 规划动作", planSpeakingMotion: true });
+
+    expect(calls.tts).toBe(1);
+    expect(calls.speakingMotion).toBe(1);
+    session.stop();
   });
 
   it("classifies optimistically when a classifier is provided", async () => {

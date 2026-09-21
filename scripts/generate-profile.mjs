@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -5,11 +6,18 @@ import { Live2DProfileAutoGenerator } from "@soullink-emotion/profile-generator"
 import { modelCatalog } from "../src/model-catalog.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const configuredPublicDir = process.env.SOULLINK_DEMO_PUBLIC_DIR || "apps/web/public";
+const configuredModelsRoot = resolve(root, configuredPublicDir, "models");
+const legacyModelsRoot = resolve(root, "l2d");
+const usePublicModels = existsSync(configuredModelsRoot);
+const modelsRoot = usePublicModels ? configuredModelsRoot : legacyModelsRoot;
+const modelsBaseUrl = usePublicModels ? "/models" : "/l2d";
+const localModelDir = (model) => usePublicModels ? (model.assetDir ?? model.modelDir) : model.modelDir;
 const force = process.argv.includes("--force");
 const modelOptionIndex = process.argv.indexOf("--model");
 const requestedModel = modelOptionIndex >= 0 ? process.argv[modelOptionIndex + 1] : undefined;
 const targets = requestedModel
-  ? modelCatalog.filter((model) => model.id === requestedModel || model.modelDir === requestedModel)
+  ? modelCatalog.filter((model) => model.id === requestedModel || model.assetDir === requestedModel || model.modelDir === requestedModel)
   : modelCatalog;
 
 if (requestedModel && targets.length === 0) {
@@ -17,23 +25,23 @@ if (requestedModel && targets.length === 0) {
 }
 
 const generator = new Live2DProfileAutoGenerator({
-  modelsRoot: resolve(root, "l2d"),
-  modelsBaseUrl: "/l2d",
-  defaultModelDir: modelCatalog[0].modelDir,
+  modelsRoot,
+  modelsBaseUrl,
+  defaultModelDir: localModelDir(modelCatalog[0]),
   useConfiguredOpenAI: false
 });
 
 const results = [];
 for (const model of targets) {
   const result = await generator.ensure({
-    modelDir: model.modelDir,
+    modelDir: localModelDir(model),
     displayName: model.displayName,
     force
   });
   if (model.profileOverrides) {
     const generatedProfile = result.profile;
     const saveResult = await generator.saveCalibratedProfile({
-      modelDir: model.modelDir,
+      modelDir: localModelDir(model),
       displayName: model.displayName,
       parameterMap: model.profileOverrides.parameterMap,
       privateEmotionMap: model.profileOverrides.privateEmotionMap
@@ -47,7 +55,7 @@ for (const model of targets) {
     result.provider = saveResult.provider;
     result.notes = [...result.notes, "Applied project model profile overrides"];
     await writeFile(
-      resolve(root, "l2d", model.modelDir, "soullink.profile.json"),
+      resolve(modelsRoot, localModelDir(model), "soullink.profile.json"),
       `${JSON.stringify(result.profile, null, 2)}\n`,
       "utf8"
     );

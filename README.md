@@ -9,7 +9,7 @@
 <p>
   <a href="https://github.com/nanlingyin/soullink-emotion-sdk/stargazers"><img src="https://img.shields.io/github/stars/nanlingyin/soullink-emotion-sdk?style=for-the-badge&logo=github&label=Stars" alt="GitHub Stars"></a>
   <a href="https://github.com/nanlingyin/soullink-emotion-sdk/actions/workflows/verify.yml"><img src="https://img.shields.io/github/actions/workflow/status/nanlingyin/soullink-emotion-sdk/verify.yml?style=for-the-badge&logo=github-actions&label=CI" alt="CI Status"></a>
-  <a href="https://github.com/nanlingyin/soullink-emotion-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nanlingyin/soullink-emotion-sdk?style=for-the-badge&label=License" alt="MIT License"></a>
+  <a href="https://github.com/nanlingyin/soullink-emotion-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/nanlingyin/soullink-emotion-sdk?style=for-the-badge&label=License" alt="Apache-2.0 License"></a>
   <a href="https://www.npmjs.com/package/@soullink-emotion/sdk"><img src="https://img.shields.io/npm/v/@soullink-emotion/sdk?style=for-the-badge&logo=npm&label=npm" alt="npm Version"></a>
 </p>
 
@@ -187,7 +187,7 @@ npm run release:check
 
 ## Star 趋势
 
-感谢每一位关注、试用和反馈的开发者。Star 数会随 GitHub 实时更新，历史趋势如下：
+感谢每一位关注、试用和反馈的开发者：
 
 <p align="center">
   <a href="https://star-history.com/#nanlingyin/soullink-emotion-sdk&Date">
@@ -198,18 +198,19 @@ npm run release:check
 ## 文档导航
 
 - [完整包接入指南](./packages/README.md)
+- [第三方集成教程：对话、语音与 JEV 动作](./docs/integration-tutorial.md)
 - [测试与发布说明](./TESTING.md)
 - [发布流程](./RELEASING.md)
 
 ## 安全与资产说明
 
 - Provider 凭据只能放在可信的服务端环境，不能写入 `src`、`VITE_*`、Profile 或发布包。
-- Live2D 模型、贴图和 Cubism Core 不属于本 SDK 的 MIT 授权范围，分享模型前请单独确认授权条款。
+- Live2D 模型、贴图和 Cubism Core 不属于本 SDK 的 Apache-2.0 授权范围，分享模型前请单独确认授权条款。
 - 仓库中的演示视频仅用于说明 SDK 的表现效果；其中出现的角色模型、音乐和素材仍以原作者授权为准。
 
 ## License
 
-Soullink Emotion SDK 以 MIT License 发布，详见 [LICENSE](./LICENSE)。
+Soullink Emotion SDK 以 Apache License 2.0 发布，详见 [LICENSE](./LICENSE)。
 
 <div align="center">
 

@@ -3,12 +3,37 @@ import type { EmotionIntent } from "@soullink-emotion/engine";
 import { SoullinkApiClient, type SoullinkFetch } from "../index";
 import {
   createEmbeddingClassifierAdapter,
+  createMotionPlannerAdapter,
   createPlannerAdapter,
   createTtsAdapter
 } from "../runtimeAdapters";
 import { createBrowserTtsAdapter, estimateSpeechDurationFromText } from "../browser";
 
 describe("runtime adapters", () => {
+  it("exposes an independent motion planner port for JEV-style providers", async () => {
+    const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+    const fetch: SoullinkFetch = async (input, init) => {
+      requests.push({ url: String(input), body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+      return jsonResponse({ provider: "jev", parameterPlan: [] });
+    };
+    const client = new SoullinkApiClient({ baseURL: "https://example.test", fetch });
+    const motionPlanner = createMotionPlannerAdapter({ client });
+
+    await motionPlanner.planSpeakingMotion({
+      speechText: "line",
+      durationSec: 1.2,
+      mode: "fixed-parallel",
+      frameCount: 3,
+      characterName: "Ava",
+      characterProfile: "profile"
+    });
+
+    expect(requests[0]).toMatchObject({
+      url: "https://example.test/llm/speaking-motion/plan",
+      body: { speechText: "line", durationSec: 1.2, frameCount: 3 }
+    });
+  });
+
   it("maps runtime planner input and resolves provider settings lazily", async () => {
     const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
     const fetch: SoullinkFetch = async (input, init) => {
