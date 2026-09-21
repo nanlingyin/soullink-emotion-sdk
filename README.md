@@ -14,6 +14,7 @@
 </p>
 
 <p>
+  <a href="http://soullink.lynngnan.top/">官方网站</a> ·
   <a href="#效果展示">查看效果</a> ·
   <a href="#快速开始">快速开始</a> ·
   <a href="./packages/README.md">完整接入指南</a> ·
@@ -29,6 +30,7 @@
 </p>
 
 <p align="center">
+  <a href="http://soullink.lynngnan.top/">访问官方网站</a> ·
   <a href="./docs/assets/soullink-emotion-demo.mp4">下载或播放仓库内演示视频</a> ·
   <a href="https://www.bilibili.com/video/av116943369543262/">在 Bilibili 查看原视频</a>
 </p>
@@ -63,6 +65,7 @@ Soullink Emotion SDK 是一套面向 Live2D 数字角色、桌宠和 AI 角色�
 | 语音口型 | 支持 RMS / peak 音量、attack / release 平滑和安全的嘴部 ownership |
 | Profile 适配 | 自动扫描模型参数，生成 `soullink.profile.json` 和能力覆盖率 |
 | 原生动画 | 复用模型已有的 expression / motion，并与程序化参数协同 |
+| JEV 动作规划 | 将当前模型的 CDI/Profile 参数交给独立动作模型，生成多帧参数计划 |
 | 可复现调试 | 通过 `seed` 固定随机序列，复现同一段动作表现 |
 | 渐进式接入 | 不绑定 LLM、Embedding、TTS、UI 框架或后端服务 |
 
@@ -77,11 +80,13 @@ flowchart LR
     C --> D[VAD 情绪状态]
     C --> E[FACS / AU 表情]
     C --> F[Idle / Speech / Reaction 动作]
+    C -->|可选 JEV| J[JEV 参数关键帧]
     D --> G[MotionMixer]
     E --> G
     F --> G
     G --> H[ModelProfile 参数映射]
-    H --> I[Live2D Renderer]
+    H --> J
+    J --> I[Live2D Renderer]
 ```
 
 ## 为什么适合桌宠

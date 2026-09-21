@@ -2,7 +2,7 @@
 
 这份教程面向要把 Soullink Emotion 接入桌宠、Live2D 网页应用或 AI 角色产品的开发者。示例使用 TypeScript 和 ESM，重点说明三类外部模型如何分别接入：对话模型、语音模型和 JEV/动作模型。
 
-SDK 不内置厂商密钥，也不要求三类模型来自同一个服务。浏览器可以只调用自己的后端适配层，Node 服务也可以直接注入 provider。
+SDK 不内置厂商密钥，也不要求三类模型来自同一个服务。浏览器可以只调用自己的后端适配层，Node 服务也可以直接注入 provider。完整示例和版本说明也可从[官方网站](http://soullink.lynngnan.top/)进入。
 
 ## 1. 整体数据流
 
@@ -43,7 +43,7 @@ JEV 输出参数目标值，不直接修改 Cubism Core。运行时在关键帧�
 VAD 没有被 JEV 取代，它仍是连续情绪和基础表情的核心。每一帧的处理顺序是：
 
 1. `MessageClassifier` 先产生即时 `EmotionIntent`，让角色无需等待大模型就能开始反应。
-2. `TextModelClient.planReaction()` 返回回复、`vadTarget`、FACS/AU action plan 和可选参数计划，runtime 通过 `triggerPlan()` 接收。
+2. `TextModelClient.planReaction()` 返回回复、`vadTarget`、FACS/AU action plan 和可选参数计划，runtime 通过 `triggerPlan()` 接收；如果没有单独的 `motionPlanner`，回复计划中的 `parameterPlan` 会随语音播放启动。
 3. `EmotionStateController` 更新连续 VAD；VAD mapper 将当前 VAD 转换为基础 FACS 表情。
 4. engine 将 Idle、VAD 微动、VAD 手势、reaction、reflection、等待语音动作、LipSync 和 speech performance 混合为当前 FACS。
 5. `ModelProfileAdapter` 把 FACS 和自定义通道映射成当前模型的真实 Cubism 参数。
@@ -96,6 +96,8 @@ public/models/lilyabee/soullink.profile.json
 ```
 
 不要把模型文件依赖到浏览器无法访问的本地磁盘路径，也不要把 API key 写入模型目录或 `VITE_*` 变量。
+
+仓库 Demo 默认使用 `apps/web/public/models/<assetDir>`。可以在 `.env` 或 `.env.local` 中设置 `SOULLINK_DEMO_PUBLIC_DIR` 指向其他公共目录；Vite、JEV 对话服务和 Profile 生成会使用同一个目录。如果使用旧版项目的根目录 `l2d/<modelDir>`，没有检测到公共目录时会自动保留 `/l2d/<modelDir>` 的兼容路径。
 
 ### 3.2 自动生成 Profile
 
@@ -378,7 +380,7 @@ const motionPlanner = createMotionPlannerAdapter({ client: api });
 | TTS | `/tts/voxcpm2` 或 `/tts/cosyvoice2` |
 | Embedding 分类 | `/reaction/classify-embedding` |
 
-`createMotionPlannerAdapter()` 只暴露动作能力，适合对话模型和动作模型来自不同厂商的情况。
+`createMotionPlannerAdapter()` 只暴露动作能力，适合对话模型和动作模型来自不同厂商的情况。它不接收或转发 `openAI` 配置；浏览器只调用可信 Soullink API，JEV provider 凭据由服务端保存。
 
 ## 8. JEV 请求和返回格式
 
@@ -602,7 +604,7 @@ const debugRecord = {
 ## 12. 安全和发布边界
 
 1. 对话、TTS、JEV、Embedding 的密钥只放在可信后端环境变量或密钥管理服务中。
-2. 浏览器只调用自己的后端；`createSpeakingMotionApiClient` 会移除请求中的 `openAI` 字段。
+2. 浏览器只调用自己的后端；`createSpeakingMotionApiClient` 会移除请求中的 `openAI`、`apiKey` 和兼容别名字段。使用 `createMotionPlannerAdapter` 时也不要传入 provider 配置，它只负责调用可信 API。
 3. 后端接收动作计划后必须重新校验参数 ID、范围、帧数和 `duration`。
 4. Live2D 模型、贴图和 Cubism Core 的授权由应用方负责，不属于 SDK 的 Apache-2.0 授权范围。
 5. Profile 可以公开给浏览器，但不要写入 provider key、内部 URL 或用户隐私。

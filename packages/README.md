@@ -6,7 +6,7 @@ Soullink Emotion 是一套面向 Live2D 数字角色的情绪表演 SDK。它把
 
 本文先带你运行当前测试项目，再从最小 engine 接入逐步扩展到完整会话、Embedding、Planner/TTS、Profile 生成和模型校准。
 
-如果要把 SDK 接入自己的应用，推荐先阅读[第三方集成教程](../docs/integration-tutorial.md)。教程按实际开发顺序演示了对话模型、语音模型、JEV 动作模型和 Live2D 渲染器的组合方式。
+如果要把 SDK 接入自己的应用，推荐先阅读[第三方集成教程](../docs/integration-tutorial.md)。教程按实际开发顺序演示了对话模型、语音模型、JEV 动作模型和 Live2D 渲染器的组合方式。项目官方网站：[soullink.lynngnan.top](http://soullink.lynngnan.top/)。
 
 ## 目录
 
@@ -650,6 +650,7 @@ await session.sendMessage("今天终于把问题解决了", {
 ```
 
 `baseURL` 指向 Soullink API，而不是直接指向上游模型供应商。浏览器不应持有上游 LLM、Embedding 或 TTS 的长期 API Key。
+`createMotionPlannerAdapter()` 同样不会接收或转发 `openAI` 配置；JEV provider 凭据应由可信服务端保存。
 
 ## 不使用 LLM：直接接入 Embedding 分类
 

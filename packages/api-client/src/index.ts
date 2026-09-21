@@ -19,6 +19,7 @@ export {
 } from "./runtimeAdapters";
 export type {
   EmbeddingClassifierAdapterOptions,
+  MotionPlannerAdapterOptions,
   PlannerAdapterOptions,
   TtsAdapterOptions
 } from "./runtimeAdapters";
